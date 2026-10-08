@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수면 패턴 관리</title>
+<style>
+  :root {
+    --bg: #0f1226; --card: #1a1f3d; --text: #e8eaf6; --muted: #9aa0c3;
+    --accent: #7c8cff; --good: #4caf8f; --bad: #e57373; --border: #2a3060;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Pretendard", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 20px 16px 8px; text-align: center; }
+  header h1 { margin: 0; font-size: 1.5rem; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+  nav { display: flex; justify-content: center; gap: 8px; padding: 12px; }
+  nav button { background: var(--card); color: var(--muted); border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: .95rem; }
+  nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { max-width: 640px; margin: 0 auto; padding: 0 16px 40px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 1rem; }
+  .row { display: flex; gap: 12px; } .row > div { flex: 1; }
+  .btn { width: 100%; margin-top: 16px; padding: 12px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 1rem; cursor: pointer; }
+  .stars { display: flex; gap: 6px; } .stars span { font-size: 1.6rem; cursor: pointer; color: #444a7a; } .stars span.on { color: #ffd166; }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat { background: var(--bg); border-radius: 8px; padding: 12px; text-align: center; }
+  .stat .v { font-size: 1.4rem; font-weight: bold; } .stat .l { font-size: .8rem; color: var(--muted); }
+  .entry { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .entry:last-child { border-bottom: none; }
+  .entry .d { font-weight: bold; } .entry .s { color: var(--muted); font-size: .85rem; }
+  .entry button { background: none; border: none; color: var(--bad); cursor: pointer; font-size: 1rem; }
+  .tip { padding: 10px; border-left: 3px solid var(--accent); background: var(--bg); margin-bottom: 8px; border-radius: 4px; font-size: .9rem; }
+  canvas { width: 100%; height: 220px; }
+  .hidden { display: none; }
+  .empty { color: var(--muted); text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌙 수면 패턴 관리</h1>
+  <p>매일의 수면을 기록하고 패턴을 확인하세요</p>
+</header>
+<nav>
+  <button data-tab="record" class="active">기록</button>
+  <button data-tab="stats">통계</button>
+  <button data-tab="history">기록 목록</button>
+</nav>
+<main>
+  <section id="record">
+    <div class="card">
+      <h2>오늘의 수면 기록</h2>
+      <label>날짜 (일어난 날)</label>
+      <input type="date" id="date">
+      <div class="row">
+        <div><label>취침 시각</label><input type="time" id="bed" value="23:30"></div>
+        <div><label>기상 시각</label><input type="time" id="wake" value="07:00"></div>
+      </div>
+      <label>수면 질</label>
+      <div class="stars" id="stars"></div>
+      <label>메모 (선택)</label>
+      <textarea id="memo" rows="2" placeholder="예: 카페인 늦게 마심, 자주 깸"></textarea>
+      <button class="btn" id="save">저장하기</button>
+    </div>
+  </section>
+
+  <section id="stats" class="hidden">
+    <div class="card">
+      <h2>최근 7일 요약</h2>
+      <div class="stats">
+        <div class="stat"><div class="v" id="avgDur">-</div><div class="l">평균 수면 시간</div></div>
+        <div class="stat"><div class="v" id="avgQ">-</div><div class="l">평균 수면 질</div></div>
+        <div class="stat"><div class="v" id="avgBed">-</div><div class="l">평균 취침 시각</div></div>
+        <div class="stat"><div class="v" id="avgWake">-</div><div class="l">평균 기상 시각</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>수면 시간 추이</h2>
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="card">
+      <h2>수면 조언</h2>
+      <div id="tips"></div>
+    </div>
+  </section>
+
+  <section id="history" class="hidden">
+    <div class="card">
+      <h2>전체 기록</h2>
+      <div id="list"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const KEY = 'sleepRecords';
+let records = JSON.parse(localStorage.getItem(KEY) || '[]');
+let quality = 3;
+
+const $ = id => document.getElementById(id);
+const save = () => localStorage.setItem(KEY, JSON.stringify(records));
+const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const fmtMin = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const fmtDur = m => `${Math.floor(m / 60)}시간 ${Math.round(m % 60)}분`;
+function duration(bed, wake) { let d = toMin(wake) - toMin(bed); if (d <= 0) d += 1440; return d; }
+
+$('date').value = new Date().toISOString().slice(0, 10);
+
+function renderStars() {
+  $('stars').innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const s = document.createElement('span');
+    s.textContent = '★'; s.className = i <= quality ? 'on' : '';
+    s.onclick = () => { quality = i; renderStars(); };
+    $('stars').appendChild(s);
+  }
+}
+
+$('save').onclick = () => {
+  const r = { date: $('date').value, bed: $('bed').value, wake: $('wake').value, quality, memo: $('memo').value.trim() };
+  if (!r.date || !r.bed || !r.wake) return alert('날짜와 시각을 입력해주세요.');
+  records = records.filter(x => x.date !== r.date);
+  records.push(r);
+  records.sort((a, b) => b.date.localeCompare(a.date));
+  save();
+  $('memo').value = '';
+  alert('저장되었습니다!');
+  render();
+};
+
+// 자정을 넘나드는 시각의 평균: 18시 이전은 +24h 처리
+function avgTime(times, shiftBefore) {
+  const ms = times.map(t => { let m = toMin(t); if (shiftBefore && m < 18 * 60) m += 1440; return m; });
+  return ms.reduce((a, b) => a + b, 0) / ms.length;
+}
+
+function renderStats() {
+  const recent = records.slice(0, 7);
+  if (!recent.length) {
+    ['avgDur', 'avgQ', 'avgBed', 'avgWake'].forEach(id => $(id).textContent = '-');
+    $('tips').innerHTML = '<div class="empty">기록이 쌓이면 조언을 보여드려요.</div>';
+    drawChart([]);
+    return;
+  }
+  const durs = recent.map(r => duration(r.bed, r.wake));
+  const avgD = durs.reduce((a, b) => a + b, 0) / durs.length;
+  $('avgDur').textContent = fmtDur(avgD);
+  $('avgQ').textContent = (recent.reduce((a, r) => a + r.quality, 0) / recent.length).toFixed(1) + ' / 5';
+  $('avgBed').textContent = fmtMin(avgTime(recent.map(r => r.bed), true));
+  $('avgWake').textContent = fmtMin(avgTime(recent.map(r => r.wake), false));
+
+  const tips = [];
+  if (avgD < 420) tips.push('평균 수면이 7시간 미만입니다. 성인 권장 수면 시간은 7~9시간이에요.');
+  else if (avgD > 540) tips.push('평균 수면이 9시간을 넘습니다. 과다 수면도 피로의 원인이 될 수 있어요.');
+  else tips.push('수면 시간이 권장 범위(7~9시간) 안에 있어요. 좋습니다!');
+  const beds = recent.map(r => { let m = toMin(r.bed); if (m < 1080) m += 1440; return m; });
+  const spread = Math.max(...beds) - Math.min(...beds);
+  if (spread > 90) tips.push(`취침 시각 편차가 ${fmtDur(spread)}입니다. 매일 비슷한 시간에 자는 것이 수면 질을 높여요.`);
+  if (avgTime(recent.map(r => r.bed), true) > 25 * 60) tips.push('평균 취침 시각이 새벽 1시 이후입니다. 조금씩 앞당겨 보세요.');
+  $('tips').innerHTML = tips.map(t => `<div class="tip">${t}</div>`).join('');
+  drawChart(recent.slice().reverse());
+}
+
+function drawChart(data) {
+  const c = $('chart'), dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, w, h);
+  if (!data.length) { ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'center'; ctx.fillText('데이터가 없습니다', w / 2, h / 2); return; }
+  const pad = 30, maxH = 12, bw = (w - pad * 2) / data.length;
+  ctx.strokeStyle = '#4caf8f'; ctx.setLineDash([4, 4]);
+  [7, 9].forEach(v => { const y = h - pad - (v / maxH) * (h - pad * 2); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke(); });
+  ctx.setLineDash([]);
+  data.forEach((r, i) => {
+    const hrs = duration(r.bed, r.wake) / 60;
+    const bh = (Math.min(hrs, maxH) / maxH) * (h - pad * 2);
+    const x = pad + i * bw + bw * 0.2;
+    ctx.fillStyle = hrs >= 7 && hrs <= 9 ? '#7c8cff' : '#e57373';
+    ctx.fillRect(x, h - pad - bh, bw * 0.6, bh);
+    ctx.fillStyle = '#e8eaf6'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(hrs.toFixed(1), x + bw * 0.3, h - pad - bh - 4);
+    ctx.fillStyle = '#9aa0c3'; ctx.fillText(r.date.slice(5), x + bw * 0.3, h - pad + 14);
+  });
+}
+
+function renderList() {
+  if (!records.length) { $('list').innerHTML = '<div class="empty">아직 기록이 없습니다.</div>'; return; }
+  $('list').innerHTML = records.map((r, i) => `
+    <div class="entry">
+      <div>
+        <div class="d">${r.date} · ${'★'.repeat(r.quality)}</div>
+        <div class="s">${r.bed} → ${r.wake} (${fmtDur(duration(r.bed, r.wake))})${r.memo ? ' · ' + r.memo : ''}</div>
+      </div>
+      <button data-i="${i}" title="삭제">✕</button>
+    </div>`).join('');
+  $('list').querySelectorAll('button').forEach(b => b.onclick = () => {
+    if (confirm('이 기록을 삭제할까요?')) { records.splice(+b.dataset.i, 1); save(); render(); }
+  });
+}
+
+function render() { renderStats(); renderList(); }
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('hidden', s.id !== b.dataset.tab));
+  render();
+});
+
+renderStars();
+render();
+</script>
+</body>
+</html>
