@@ -35,6 +35,12 @@
   .tip { padding: 10px; border-left: 3px solid var(--accent); background: var(--bg); margin-bottom: 8px; border-radius: 4px; font-size: .9rem; }
   canvas { width: 100%; height: 220px; }
   .hidden { display: none; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .btn.sub { background: var(--bg); border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
+  .entry .acts button { margin-left: 6px; color: var(--muted); }
+  .entry .acts button.del { color: var(--bad); }
+  .editing { color: #ffd166; font-size: .85rem; margin-top: 8px; }
   .empty { color: var(--muted); text-align: center; padding: 20px; }
 </style>
 </head>
@@ -62,11 +68,22 @@
       <div class="stars" id="stars"></div>
       <label>메모 (선택)</label>
       <textarea id="memo" rows="2" placeholder="예: 카페인 늦게 마심, 자주 깸"></textarea>
+      <div class="editing hidden" id="editing">✏️ 기존 기록을 수정 중입니다</div>
       <button class="btn" id="save">저장하기</button>
+      <button class="btn sub hidden" id="cancelEdit">수정 취소</button>
     </div>
   </section>
 
   <section id="stats" class="hidden">
+    <div class="card">
+      <h2>나의 수면 목표</h2>
+      <div class="row">
+        <div><label>목표 수면 시간</label><input type="number" id="goalHrs" min="4" max="12" step="0.5"></div>
+        <div><label>목표 취침 시각</label><input type="time" id="goalBed"></div>
+      </div>
+      <button class="btn sub" id="saveGoal">목표 저장</button>
+      <div id="goalRate" class="s" style="margin-top:10px;color:var(--muted)"></div>
+    </div>
     <div class="card">
       <h2>최근 7일 요약</h2>
       <div class="stats">
@@ -91,13 +108,23 @@
       <h2>전체 기록</h2>
       <div id="list"></div>
     </div>
+    <div class="card">
+      <h2>백업</h2>
+      <button class="btn sub" id="exportBtn">📤 기록 내보내기 (JSON)</button>
+      <button class="btn sub" id="importBtn">📥 기록 가져오기</button>
+      <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+    </div>
   </section>
 </main>
+<div class="toast" id="toast"></div>
 
 <script>
 const KEY = 'sleepRecords';
 let records = JSON.parse(localStorage.getItem(KEY) || '[]');
 let quality = 3;
+let editingDate = null;
+const GKEY = 'sleepGoal';
+let goal = JSON.parse(localStorage.getItem(GKEY) || '{"hrs":8,"bed":"23:30"}');
 
 const $ = id => document.getElementById(id);
 const save = () => localStorage.setItem(KEY, JSON.stringify(records));
@@ -106,7 +133,10 @@ const fmtMin = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return String(
 const fmtDur = m => `${Math.floor(m / 60)}시간 ${Math.round(m % 60)}분`;
 function duration(bed, wake) { let d = toMin(wake) - toMin(bed); if (d <= 0) d += 1440; return d; }
 
-$('date').value = new Date().toISOString().slice(0, 10);
+// 로컬 날짜 기준 (toISOString은 UTC라 한국 오전 9시 이전엔 전날로 나옴)
+function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+$('date').value = today();
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1800); }
 
 function renderStars() {
   $('stars').innerHTML = '';
@@ -121,14 +151,32 @@ function renderStars() {
 $('save').onclick = () => {
   const r = { date: $('date').value, bed: $('bed').value, wake: $('wake').value, quality, memo: $('memo').value.trim() };
   if (!r.date || !r.bed || !r.wake) return alert('날짜와 시각을 입력해주세요.');
-  records = records.filter(x => x.date !== r.date);
+  const exists = records.some(x => x.date === r.date && x.date !== editingDate);
+  if (exists && !confirm(`${r.date} 기록이 이미 있습니다. 덮어쓸까요?`)) return;
+  records = records.filter(x => x.date !== r.date && x.date !== editingDate);
   records.push(r);
   records.sort((a, b) => b.date.localeCompare(a.date));
   save();
-  $('memo').value = '';
-  alert('저장되었습니다!');
+  toast(editingDate ? '수정되었습니다' : '저장되었습니다');
+  resetForm();
   render();
 };
+
+function resetForm() {
+  editingDate = null;
+  $('date').value = today(); $('bed').value = '23:30'; $('wake').value = '07:00'; $('memo').value = '';
+  quality = 3; renderStars();
+  $('editing').classList.add('hidden'); $('cancelEdit').classList.add('hidden');
+}
+$('cancelEdit').onclick = resetForm;
+
+function startEdit(r) {
+  editingDate = r.date;
+  $('date').value = r.date; $('bed').value = r.bed; $('wake').value = r.wake; $('memo').value = r.memo || '';
+  quality = r.quality; renderStars();
+  $('editing').classList.remove('hidden'); $('cancelEdit').classList.remove('hidden');
+  showTab('record');
+}
 
 // 자정을 넘나드는 시각의 평균: 18시 이전은 +24h 처리
 function avgTime(times, shiftBefore) {
@@ -137,10 +185,14 @@ function avgTime(times, shiftBefore) {
 }
 
 function renderStats() {
-  const recent = records.slice(0, 7);
+  const from = new Date(today()); from.setDate(from.getDate() - 6);
+  const fromStr = from.toISOString().slice(0, 10);
+  const recent = records.filter(r => r.date >= fromStr);
+  $('goalHrs').value = goal.hrs; $('goalBed').value = goal.bed;
   if (!recent.length) {
     ['avgDur', 'avgQ', 'avgBed', 'avgWake'].forEach(id => $(id).textContent = '-');
     $('tips').innerHTML = '<div class="empty">기록이 쌓이면 조언을 보여드려요.</div>';
+    $('goalRate').textContent = '';
     drawChart([]);
     return;
   }
@@ -151,7 +203,13 @@ function renderStats() {
   $('avgBed').textContent = fmtMin(avgTime(recent.map(r => r.bed), true));
   $('avgWake').textContent = fmtMin(avgTime(recent.map(r => r.wake), false));
 
+  const okDays = durs.filter(d => d >= goal.hrs * 60 - 15).length;
+  $('goalRate').textContent = `최근 7일 중 ${okDays}일 목표 수면 시간 달성 (${recent.length}일 기록)`;
   const tips = [];
+  if (avgD < goal.hrs * 60 - 30) tips.push(`목표(${goal.hrs}시간)보다 평균 ${fmtDur(goal.hrs * 60 - avgD)} 덜 자고 있어요.`);
+  const goalBedM = (m => m < 1080 ? m + 1440 : m)(toMin(goal.bed));
+  const lateBy = avgTime(recent.map(r => r.bed), true) - goalBedM;
+  if (lateBy > 30) tips.push(`평균 취침이 목표(${goal.bed})보다 ${fmtDur(lateBy)} 늦습니다. 15분씩 앞당겨 보세요.`);
   if (avgD < 420) tips.push('평균 수면이 7시간 미만입니다. 성인 권장 수면 시간은 7~9시간이에요.');
   else if (avgD > 540) tips.push('평균 수면이 9시간을 넘습니다. 과다 수면도 피로의 원인이 될 수 있어요.');
   else tips.push('수면 시간이 권장 범위(7~9시간) 안에 있어요. 좋습니다!');
@@ -171,6 +229,8 @@ function drawChart(data) {
   if (!data.length) { ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'center'; ctx.fillText('데이터가 없습니다', w / 2, h / 2); return; }
   const pad = 30, maxH = 12, bw = (w - pad * 2) / data.length;
   ctx.strokeStyle = '#4caf8f'; ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#ffd166'; { const y = h - pad - (goal.hrs / maxH) * (h - pad * 2); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke(); }
+  ctx.strokeStyle = '#4caf8f'; ctx.setLineDash([4, 4]);
   [7, 9].forEach(v => { const y = h - pad - (v / maxH) * (h - pad * 2); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke(); });
   ctx.setLineDash([]);
   data.forEach((r, i) => {
@@ -185,28 +245,66 @@ function drawChart(data) {
   });
 }
 
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function renderList() {
   if (!records.length) { $('list').innerHTML = '<div class="empty">아직 기록이 없습니다.</div>'; return; }
   $('list').innerHTML = records.map((r, i) => `
     <div class="entry">
       <div>
         <div class="d">${r.date} · ${'★'.repeat(r.quality)}</div>
-        <div class="s">${r.bed} → ${r.wake} (${fmtDur(duration(r.bed, r.wake))})${r.memo ? ' · ' + r.memo : ''}</div>
+        <div class="s">${r.bed} → ${r.wake} (${fmtDur(duration(r.bed, r.wake))})${r.memo ? ' · ' + esc(r.memo) : ''}</div>
       </div>
-      <button data-i="${i}" title="삭제">✕</button>
+      <div class="acts"><button data-e="${i}" title="수정">✏️</button><button class="del" data-i="${i}" title="삭제">✕</button></div>
     </div>`).join('');
-  $('list').querySelectorAll('button').forEach(b => b.onclick = () => {
-    if (confirm('이 기록을 삭제할까요?')) { records.splice(+b.dataset.i, 1); save(); render(); }
+  $('list').querySelectorAll('button.del').forEach(b => b.onclick = () => {
+    if (confirm('이 기록을 삭제할까요?')) { records.splice(+b.dataset.i, 1); save(); render(); toast('삭제되었습니다'); }
   });
+  $('list').querySelectorAll('button[data-e]').forEach(b => b.onclick = () => startEdit(records[+b.dataset.e]));
 }
 
 function render() { renderStats(); renderList(); }
 
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
-  document.querySelectorAll('main section').forEach(s => s.classList.toggle('hidden', s.id !== b.dataset.tab));
+function showTab(tab) {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('hidden', s.id !== tab));
   render();
-});
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+$('saveGoal').onclick = () => {
+  const hrs = parseFloat($('goalHrs').value);
+  if (!(hrs >= 4 && hrs <= 12) || !$('goalBed').value) return toast('목표 값을 확인해주세요');
+  goal = { hrs, bed: $('goalBed').value };
+  localStorage.setItem(GKEY, JSON.stringify(goal));
+  toast('목표가 저장되었습니다'); render();
+};
+
+$('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify({ records, goal }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `sleep-backup-${today()}.json`; a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const data = JSON.parse(rd.result);
+      const list = Array.isArray(data) ? data : data.records;
+      if (!Array.isArray(list)) throw 0;
+      const valid = list.filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && /^\d{2}:\d{2}$/.test(r.bed) && /^\d{2}:\d{2}$/.test(r.wake));
+      const map = Object.fromEntries(records.map(r => [r.date, r]));
+      valid.forEach(r => map[r.date] = { date: r.date, bed: r.bed, wake: r.wake, quality: Math.min(5, Math.max(1, +r.quality || 3)), memo: String(r.memo || '') });
+      records = Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
+      if (data.goal && data.goal.hrs) { goal = data.goal; localStorage.setItem(GKEY, JSON.stringify(goal)); }
+      save(); render(); toast(`${valid.length}개 기록을 가져왔습니다`);
+    } catch { toast('올바른 백업 파일이 아닙니다'); }
+    e.target.value = '';
+  };
+  rd.readAsText(f);
+};
 
 renderStars();
 render();
