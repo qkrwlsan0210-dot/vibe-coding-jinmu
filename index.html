@@ -35,6 +35,13 @@
   .tip { padding: 10px; border-left: 3px solid var(--accent); background: var(--bg); margin-bottom: 8px; border-radius: 4px; font-size: .9rem; }
   canvas { width: 100%; height: 220px; }
   .hidden { display: none; }
+  .quick { display: flex; gap: 10px; } .quick .btn { margin-top: 0; }
+  .quick .btn.night { background: #3b3f8f; } .quick .btn.day { background: #e0a43a; }
+  .pending { margin-top: 10px; font-size: .9rem; color: #ffd166; text-align: center; }
+  .seg { display: flex; gap: 6px; margin-bottom: 12px; }
+  .seg button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  #timeline { height: 260px; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: opacity .25s; pointer-events: none; }
   .toast.show { opacity: 1; }
   .btn.sub { background: var(--bg); border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
@@ -56,6 +63,14 @@
 </nav>
 <main>
   <section id="record">
+    <div class="card">
+      <h2>빠른 기록</h2>
+      <div class="quick">
+        <button class="btn night" id="sleepNow">🛌 지금 잘게요</button>
+        <button class="btn day" id="wakeNow">☀️ 일어났어요</button>
+      </div>
+      <div class="pending hidden" id="pending"></div>
+    </div>
     <div class="card">
       <h2>오늘의 수면 기록</h2>
       <label>날짜 (일어난 날)</label>
@@ -84,18 +99,28 @@
       <button class="btn sub" id="saveGoal">목표 저장</button>
       <div id="goalRate" class="s" style="margin-top:10px;color:var(--muted)"></div>
     </div>
+    <div class="seg" id="periodSeg">
+      <button data-p="7" class="on">최근 7일</button>
+      <button data-p="30">최근 30일</button>
+    </div>
     <div class="card">
-      <h2>최근 7일 요약</h2>
+      <h2 id="sumTitle">최근 7일 요약</h2>
       <div class="stats">
         <div class="stat"><div class="v" id="avgDur">-</div><div class="l">평균 수면 시간</div></div>
         <div class="stat"><div class="v" id="avgQ">-</div><div class="l">평균 수면 질</div></div>
         <div class="stat"><div class="v" id="avgBed">-</div><div class="l">평균 취침 시각</div></div>
         <div class="stat"><div class="v" id="avgWake">-</div><div class="l">평균 기상 시각</div></div>
+        <div class="stat"><div class="v" id="debt">-</div><div class="l">누적 수면 부채</div></div>
+        <div class="stat"><div class="v" id="jetlag">-</div><div class="l">주말 시차 (사회적 시차)</div></div>
       </div>
     </div>
     <div class="card">
       <h2>수면 시간 추이</h2>
       <canvas id="chart"></canvas>
+    </div>
+    <div class="card">
+      <h2>수면 시간대</h2>
+      <canvas id="timeline"></canvas>
     </div>
     <div class="card">
       <h2>수면 조언</h2>
@@ -125,6 +150,8 @@ let quality = 3;
 let editingDate = null;
 const GKEY = 'sleepGoal';
 let goal = JSON.parse(localStorage.getItem(GKEY) || '{"hrs":8,"bed":"23:30"}');
+const PKEY = 'sleepPending';
+let period = 7;
 
 const $ = id => document.getElementById(id);
 const save = () => localStorage.setItem(KEY, JSON.stringify(records));
@@ -136,6 +163,12 @@ function duration(bed, wake) { let d = toMin(wake) - toMin(bed); if (d <= 0) d +
 // 로컬 날짜 기준 (toISOString은 UTC라 한국 오전 9시 이전엔 전날로 나옴)
 function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 $('date').value = today();
+const hhmm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+function renderPending() {
+  const p = localStorage.getItem(PKEY);
+  $('pending').classList.toggle('hidden', !p);
+  if (p) $('pending').textContent = `💤 ${hhmm(new Date(p))}부터 수면 중… 일어나면 '일어났어요'를 눌러주세요`;
+}
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1800); }
 
 function renderStars() {
@@ -170,6 +203,21 @@ function resetForm() {
 }
 $('cancelEdit').onclick = resetForm;
 
+$('sleepNow').onclick = () => {
+  localStorage.setItem(PKEY, new Date().toISOString());
+  renderPending(); toast('잘 자요 🌙');
+};
+$('wakeNow').onclick = () => {
+  const p = localStorage.getItem(PKEY);
+  if (!p) return toast("먼저 '지금 잘게요'를 눌러주세요");
+  const bed = new Date(p), now = new Date();
+  if (now - bed < 30 * 60000) { localStorage.removeItem(PKEY); renderPending(); return toast('30분 미만이라 기록하지 않았어요'); }
+  resetForm();
+  $('date').value = today(); $('bed').value = hhmm(bed); $('wake').value = hhmm(now);
+  localStorage.removeItem(PKEY); renderPending();
+  toast('좋은 아침이에요! 수면 질을 고르고 저장하세요');
+};
+
 function startEdit(r) {
   editingDate = r.date;
   $('date').value = r.date; $('bed').value = r.bed; $('wake').value = r.wake; $('memo').value = r.memo || '';
@@ -185,12 +233,14 @@ function avgTime(times, shiftBefore) {
 }
 
 function renderStats() {
-  const from = new Date(today()); from.setDate(from.getDate() - 6);
+  $('sumTitle').textContent = `최근 ${period}일 요약`;
+  const from = new Date(today()); from.setDate(from.getDate() - (period - 1));
   const fromStr = from.toISOString().slice(0, 10);
   const recent = records.filter(r => r.date >= fromStr);
   $('goalHrs').value = goal.hrs; $('goalBed').value = goal.bed;
   if (!recent.length) {
-    ['avgDur', 'avgQ', 'avgBed', 'avgWake'].forEach(id => $(id).textContent = '-');
+    ['avgDur', 'avgQ', 'avgBed', 'avgWake', 'debt', 'jetlag'].forEach(id => $(id).textContent = '-');
+    drawTimeline([]);
     $('tips').innerHTML = '<div class="empty">기록이 쌓이면 조언을 보여드려요.</div>';
     $('goalRate').textContent = '';
     drawChart([]);
@@ -203,9 +253,22 @@ function renderStats() {
   $('avgBed').textContent = fmtMin(avgTime(recent.map(r => r.bed), true));
   $('avgWake').textContent = fmtMin(avgTime(recent.map(r => r.wake), false));
 
+  const debt = durs.reduce((a, d) => a + Math.max(0, goal.hrs * 60 - d), 0);
+  $('debt').textContent = debt ? fmtDur(debt) : '없음';
+  // 사회적 시차: 주말(토·일 기상) vs 평일 수면 중간 시각 차이
+  const mid = r => { let b = toMin(r.bed); if (b < 1080) b += 1440; return b + duration(r.bed, r.wake) / 2; };
+  const isWkd = r => { const d = new Date(r.date + 'T12:00'); return d.getDay() === 0 || d.getDay() === 6; };
+  const wkd = recent.filter(isWkd), wk = recent.filter(r => !isWkd(r));
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  let jet = null;
+  if (wkd.length && wk.length) { jet = avg(wkd.map(mid)) - avg(wk.map(mid)); $('jetlag').textContent = (jet >= 0 ? '+' : '-') + fmtDur(Math.abs(jet)); }
+  else $('jetlag').textContent = '-';
+
   const okDays = durs.filter(d => d >= goal.hrs * 60 - 15).length;
-  $('goalRate').textContent = `최근 7일 중 ${okDays}일 목표 수면 시간 달성 (${recent.length}일 기록)`;
+  $('goalRate').textContent = `최근 ${period}일 중 ${okDays}일 목표 수면 시간 달성 (${recent.length}일 기록)`;
   const tips = [];
+  if (jet !== null && Math.abs(jet) >= 60) tips.push(`주말 수면 시간대가 평일과 ${fmtDur(Math.abs(jet))} 차이 납니다. 주말에도 기상 시각을 1시간 이내로 유지하면 월요일 피로가 줄어요.`);
+  if (debt >= 300) tips.push(`이번 기간 수면 부채가 ${fmtDur(debt)} 쌓였어요. 한 번에 몰아 자기보다 며칠에 걸쳐 30분씩 일찍 자는 게 좋아요.`);
   if (avgD < goal.hrs * 60 - 30) tips.push(`목표(${goal.hrs}시간)보다 평균 ${fmtDur(goal.hrs * 60 - avgD)} 덜 자고 있어요.`);
   const goalBedM = (m => m < 1080 ? m + 1440 : m)(toMin(goal.bed));
   const lateBy = avgTime(recent.map(r => r.bed), true) - goalBedM;
@@ -218,7 +281,8 @@ function renderStats() {
   if (spread > 90) tips.push(`취침 시각 편차가 ${fmtDur(spread)}입니다. 매일 비슷한 시간에 자는 것이 수면 질을 높여요.`);
   if (avgTime(recent.map(r => r.bed), true) > 25 * 60) tips.push('평균 취침 시각이 새벽 1시 이후입니다. 조금씩 앞당겨 보세요.');
   $('tips').innerHTML = tips.map(t => `<div class="tip">${t}</div>`).join('');
-  drawChart(recent.slice().reverse());
+  drawChart(recent.slice(0, 14).reverse());
+  drawTimeline(recent.slice(0, 14).reverse());
 }
 
 function drawChart(data) {
@@ -246,6 +310,30 @@ function drawChart(data) {
 }
 
 const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 18:00 ~ 다음날 14:00 축에 수면 구간 막대
+function drawTimeline(data) {
+  const c = $('timeline'), dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, w, h);
+  if (!data.length) { ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'center'; ctx.fillText('데이터가 없습니다', w / 2, h / 2); return; }
+  const left = 44, right = 10, top = 20, bottom = 10, start = 18 * 60, span = 20 * 60;
+  const X = m => left + ((m - start) / span) * (w - left - right);
+  ctx.font = '10px sans-serif'; ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'center'; ctx.strokeStyle = '#2a3060';
+  for (let t = start; t <= start + span; t += 240) { const x = X(t); ctx.fillText(fmtMin(t), x, 12); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, h - bottom); ctx.stroke(); }
+  const gb = (m => m < 1080 ? m + 1440 : m)(toMin(goal.bed));
+  ctx.strokeStyle = '#ffd166'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(X(gb), top); ctx.lineTo(X(gb), h - bottom); ctx.stroke(); ctx.setLineDash([]);
+  const rh = (h - top - bottom) / data.length;
+  data.forEach((r, i) => {
+    let b = toMin(r.bed); if (b < 1080) b += 1440;
+    const e = b + duration(r.bed, r.wake), y = top + i * rh;
+    ctx.fillStyle = '#7c8cff'; ctx.globalAlpha = 0.4 + r.quality * 0.12;
+    ctx.fillRect(X(Math.max(b, start)), y + rh * 0.2, X(Math.min(e, start + span)) - X(Math.max(b, start)), rh * 0.6);
+    ctx.globalAlpha = 1; ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'right';
+    ctx.fillText(r.date.slice(5), left - 6, y + rh / 2 + 3);
+  });
+}
+
 function renderList() {
   if (!records.length) { $('list').innerHTML = '<div class="empty">아직 기록이 없습니다.</div>'; return; }
   $('list').innerHTML = records.map((r, i) => `
@@ -270,6 +358,11 @@ function showTab(tab) {
   render();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+document.querySelectorAll('#periodSeg button').forEach(b => b.onclick = () => {
+  period = +b.dataset.p;
+  document.querySelectorAll('#periodSeg button').forEach(x => x.classList.toggle('on', x === b));
+  renderStats();
+});
 
 $('saveGoal').onclick = () => {
   const hrs = parseFloat($('goalHrs').value);
@@ -307,6 +400,7 @@ $('importFile').onchange = e => {
 };
 
 renderStars();
+renderPending();
 render();
 </script>
 </body>
