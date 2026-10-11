@@ -137,13 +137,15 @@ const DEFAULTS = { curBed: '06:00', curWake: '15:00', goalBed: '23:00', goalWake
 
 // 현재 패턴 → 목표 패턴 일정. 적용 기간(N일) 동안 취침·기상을 각각 (차이 ÷ N)씩 옮겨 N번째 날에 목표 도달.
 // k번째 줄(1~N) 날짜 = 적용 날짜 + (k-1) = 그날의 기상 날짜. 취침 > 기상(분)이면 취침은 전날 밤.
+const r5 = m => Math.round(m / 5) * 5;
 function buildSchedule(plan) {
   const cBed = toMin(plan.curBed), cWake = toMin(plan.curWake);
   const dBed = shortestDiff(cBed, toMin(plan.goalBed)), dWake = shortestDiff(cWake, toMin(plan.goalWake));
   if (dBed === 0 && dWake === 0) return [];
   const n = plan.days, start = dayNum(plan.startDate), rows = [];
   for (let k = 1; k <= n; k++) {
-    const bed = wrap(cBed + Math.round(dBed * k / n)), wake = wrap(cWake + Math.round(dWake * k / n));
+    // 5분 단위로 반올림 (진무 요청)
+    const bed = wrap(cBed + r5(dBed * k / n)), wake = wrap(cWake + r5(dWake * k / n));
     rows.push({ day: start + k - 1, bed, wake, prevNight: bed > wake });
   }
   return rows;
