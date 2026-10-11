@@ -79,8 +79,8 @@
   .prev .seg { position: absolute; top: 2px; bottom: 2px; background: var(--bar); border-radius: 3px; }
   .prev li.goal .seg { background: var(--sun); }
   .prev .tm { white-space: nowrap; }
-  .prev .dl { color: var(--good); margin-left: 2px; }
-  .prev .dl.fast { color: var(--err); }
+  .prev .dl { color: var(--muted); margin-left: 6px; }
+  @media (max-width: 480px) { .prev .dl { display: block; margin: 0; font-size: .7rem; text-align: right; } }
   .pc { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 3px; font-size: .82rem; }
   .pc li::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--good); }
   .pc li.bad::before { background: var(--sun); }
@@ -396,6 +396,7 @@ function bar(bed, wake) {
   const L = wrap(bed - 1080), W = wrap(wake - bed), seg = (a, w) => `<span class="seg" style="left:${a / 14.4}%;width:${w / 14.4}%"></span>`;
   return L + W <= 1440 ? seg(L, W) : seg(L, 1440 - L) + seg(0, L + W - 1440);
 }
+const sleepLen = m => `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}`;
 const delta = m => m ? `${m > 0 ? '+' : '−'}${Math.abs(m)}분` : '';
 // 두 카드 모두 아래 기간 슬라이더 값으로 계산 (진무 요청: 기간을 바꾸면 두 방식이 동시에 바뀜)
 function renderOption(p, dir, key, isRec) {
@@ -403,7 +404,8 @@ function renderOption(p, dir, key, isRec) {
   $(key + 'Badge').classList.toggle('hidden', !isRec);
   drawRing($(key + 'Ring'), p, dir);
   $(key + 'Stats').innerHTML = `<div><b>${n}일</b><span>걸리는 날</span></div><div><b>${daySleeps(rows)}일</b><span>낮에 자는 날</span></div><div><b>${hShort(mv.bed)}</b><span>옮길 거리</span></div>`;
-  const line = (lb, bed, wake, prevBed, goal) => `<li class="${goal ? 'goal' : ''}"><span class="lb">${lb}</span><span class="trk">${bar(bed, wake)}</span><span class="tm">${fmt(bed)}→${fmt(wake)}${goal ? ' 목표' : prevBed === null ? '' : `<span class="dl${Math.abs(shortestDiff(prevBed, bed)) > PACE[dir] ? ' fast' : ''}">${delta(shortestDiff(prevBed, bed))}</span>`}</span></li>`;
+  // 오른쪽: 시각과 그날 자는 시간 (진무 요청: 변화량 대신 자는 시간)
+  const line = (lb, bed, wake, prevBed, goal) => `<li class="${goal ? 'goal' : ''}"><span class="lb">${lb}</span><span class="trk">${bar(bed, wake)}</span><span class="tm">${fmt(bed)}→${fmt(wake)}<span class="dl">${sleepLen(wrap(wake - bed))}${goal ? ' · 목표' : ''}</span></span></li>`;
   let html = line('지금', toMin(p.curBed), toMin(p.curWake), null, false), prev = toMin(p.curBed);
   const show = rows.length <= 4 ? rows : rows.slice(0, 3);
   show.forEach((r, i) => { const last = r === rows.at(-1); html += line(i === 0 ? '첫날' : `${i + 1}일째`, r.bed, r.wake, prev, last); prev = r.bed; });
