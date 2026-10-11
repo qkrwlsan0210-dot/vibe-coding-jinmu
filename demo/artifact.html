@@ -80,6 +80,7 @@
   .prev li.goal .seg { background: var(--sun); }
   .prev .tm { white-space: nowrap; }
   .prev .dl { color: var(--good); margin-left: 2px; }
+  .prev .dl.fast { color: var(--err); }
   .pc { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 3px; font-size: .82rem; }
   .pc li::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--good); }
   .pc li.bad::before { background: var(--sun); }
@@ -389,12 +390,14 @@ function bar(bed, wake) {
   return L + W <= 1440 ? seg(L, W) : seg(L, 1440 - L) + seg(0, L + W - 1440);
 }
 const delta = m => m ? `${m > 0 ? '+' : '−'}${Math.abs(m)}분` : '';
+// 고른 방향 카드는 아래 기간 슬라이더 값을, 다른 카드는 그 방향의 권장 기간을 보여줌
 function renderOption(p, dir, key, isRec) {
-  const n = recDays(p, dir), rows = buildSchedule({ ...p, dir, days: n }), mv = moves(p, dir);
+  const sel = dir === p.dir && Number.isInteger(p.days) && p.days >= 1;
+  const n = sel ? p.days : recDays(p, dir), rows = buildSchedule({ ...p, dir, days: n }), mv = moves(p, dir);
   $(key + 'Badge').classList.toggle('hidden', !isRec);
   drawRing($(key + 'Ring'), p, dir);
   $(key + 'Stats').innerHTML = `<div><b>${n}일</b><span>걸리는 날</span></div><div><b>${daySleeps(rows)}일</b><span>낮에 자는 날</span></div><div><b>${hShort(mv.bed)}</b><span>옮길 거리</span></div>`;
-  const line = (lb, bed, wake, prevBed, goal) => `<li class="${goal ? 'goal' : ''}"><span class="lb">${lb}</span><span class="trk">${bar(bed, wake)}</span><span class="tm">${fmt(bed)}→${fmt(wake)}${goal ? ' 목표' : prevBed === null ? '' : `<span class="dl">${delta(shortestDiff(prevBed, bed))}</span>`}</span></li>`;
+  const line = (lb, bed, wake, prevBed, goal) => `<li class="${goal ? 'goal' : ''}"><span class="lb">${lb}</span><span class="trk">${bar(bed, wake)}</span><span class="tm">${fmt(bed)}→${fmt(wake)}${goal ? ' 목표' : prevBed === null ? '' : `<span class="dl${Math.abs(shortestDiff(prevBed, bed)) > PACE[dir] ? ' fast' : ''}">${delta(shortestDiff(prevBed, bed))}</span>`}</span></li>`;
   let html = line('지금', toMin(p.curBed), toMin(p.curWake), null, false), prev = toMin(p.curBed);
   const show = rows.length <= 4 ? rows : rows.slice(0, 3);
   show.forEach((r, i) => { const last = r === rows.at(-1); html += line(i === 0 ? '첫날' : `${i + 1}일째`, r.bed, r.wake, prev, last); prev = r.bed; });
