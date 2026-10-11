@@ -55,3 +55,8 @@
 - 게시 URL: https://claude.ai/artifact/XE32syxEY5Dw5fmBVvw7Do (비공개)
 - index.html과의 차이(게시 규칙 때문): 다크 모드 색 토큰, localStorage 접근 실패 대비 try/catch, html/head 태그 제거. 기능 동일.
 - 확인한 것: 기능 3 시나리오 13개 재실행(문구 변경 1건 외 통과), 다크 모드 360px 화면.
+
+## 진무 지적 — 결과 전달 방식
+- 원문: `근데 왜 데모버전을 안만들어주고 자꾸 위에 처럼 보낸거야`
+- 사실: 기능 1~4 동안 AI가 결과를 HTML 파일 첨부·스크린샷으로만 전달(기능 1은 그마저 누락). 링크로 여는 데모는 진무가 예시 링크를 보낸 뒤에야 게시.
+- AI 대응: 이후 기능 변경마다 같은 데모 링크(https://claude.ai/artifact/XE32syxEY5Dw5fmBVvw7Do)를 갱신, 스크린샷은 증거용으로만.
