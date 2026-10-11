@@ -36,6 +36,14 @@
   .check .row { display: flex; gap: 8px; }
   .check .row input { flex: 1; }
   .check .row .btn { width: auto; margin: 0; padding: 10px 16px; white-space: nowrap; }
+  .sched { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-top: 12px; }
+  .sched h2 { font-size: 1rem; margin: 0 0 8px; }
+  .sched ol { list-style: none; margin: 0; padding: 0; }
+  .sched li { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; padding: 9px 0; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .sched li:first-child { border-top: none; }
+  .sched .d { font-weight: 600; }
+  .sched .t { color: var(--muted); font-size: .85rem; }
+  .sched .t b { color: var(--text); font-size: 1rem; font-weight: 600; margin-left: 4px; }
 </style>
 <main>
 
@@ -56,6 +64,10 @@
       </div>
       <div class="err" id="actualErr"></div>
     </form>
+    <div class="sched" id="sched">
+      <h2>목표일까지 일정</h2>
+      <ol id="schedList"></ol>
+    </div>
     <button class="link" id="editPlan">플랜 수정</button>
   </section>
 
@@ -88,6 +100,12 @@
         </div>
         <div class="hint">3~14시간</div>
         <div class="err" id="sleepErr"></div>
+      </div>
+      <div class="field">
+        <label for="startDate">시작 날짜</label>
+        <input type="date" id="startDate">
+        <div class="hint">일정 첫날의 취침 날짜</div>
+        <div class="err" id="startDateErr"></div>
       </div>
       <button type="submit" class="btn">플랜 저장</button>
     </form>
@@ -128,12 +146,59 @@ function nextSchedule(baseWake, plan) {
   return { reached: false, wake, bed: wrap(wake - plan.sleepMin), daysLeft: Math.ceil(Math.abs(d) / plan.step) };
 }
 
+// ---- 날짜 (로컬 기준, 일 번호로 계산) ----
+const pad2 = n => String(n).padStart(2, '0');
+const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+const dayNum = iso => { const [y, m, d] = iso.split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 864e5); };
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+const fmtDay = n => { const d = new Date(n * 864e5); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}(${DOW[d.getUTCDay()]})`; };
+
+function loadLast() {
+  const raw = store.get(LAST_KEY);
+  if (!raw) return null;
+  try { const o = JSON.parse(raw); if (o && o.time) return o; } catch {}
+  return /^\d{2}:\d{2}$/.test(raw) ? { time: raw, date: todayISO() } : null;  // 이전 형식(시각만) 호환
+}
+
+// 목표 도달까지의 일정. 각 줄 = 취침 날짜, 취침, 기상. 시각은 절대 분(일 번호*1440 + 분)으로 계산해 자정 넘김 처리
+function buildSchedule(plan, last) {
+  const goal = toMin(plan.goalWake);
+  let wake = toMin(last ? last.time : plan.curWake);
+  let wakeAbs;  // 직전 기상의 절대 분
+  if (last) wakeAbs = dayNum(last.date) * 1440 + wake;
+  const rows = [];
+  let firstBedAbs = null;
+  for (let i = 0; i < 2000; i++) {
+    const d = shortestDiff(wake, goal);
+    if (d === 0) break;
+    const move = Math.sign(d) * Math.min(plan.step, Math.abs(d));
+    const nextWake = wrap(wake + move);
+    let bedAbs, nextWakeAbs;
+    if (i === 0 && !last) {
+      // 기록이 없으면: 첫 줄 취침 날짜 = 시작 날짜
+      bedAbs = dayNum(plan.startDate) * 1440 + wrap(nextWake - plan.sleepMin);
+      nextWakeAbs = bedAbs + plan.sleepMin;
+    } else {
+      nextWakeAbs = wakeAbs + 1440 + move;
+      bedAbs = nextWakeAbs - plan.sleepMin;
+    }
+    rows.push({ day: Math.floor(bedAbs / 1440), bed: wrap(bedAbs), wake: nextWake });
+    wake = nextWake; wakeAbs = nextWakeAbs;
+  }
+  return rows;
+}
+
 function renderToday() {
   const plan = loadPlan();
   if (!plan) return;
-  const last = store.get(LAST_KEY);
+  if (!plan.startDate) plan.startDate = todayISO();  // 시작 날짜가 없던 이전 플랜
+  const last = loadLast();
   // 규칙: 다음 목표 = 마지막 실제 기상 시각 + 1단계 (기록이 없으면 플랜의 현재 기상 시각)
-  const s = nextSchedule(toMin(last || plan.curWake), plan);
+  const s = nextSchedule(toMin(last ? last.time : plan.curWake), plan);
+  const rows = buildSchedule(plan, last);
+  $('sched').classList.toggle('hidden', rows.length === 0);
+  $('schedList').innerHTML = rows.map(r =>
+    `<li><span class="d">${fmtDay(r.day)}</span><span class="t">취침<b>${fmt(r.bed)}</b></span><span class="t">기상<b>${fmt(r.wake)}</b></span></li>`).join('');
   $('nextBed').textContent = fmt(s.bed);
   $('nextWake').textContent = fmt(s.wake);
   $('progress').innerHTML = s.reached
@@ -160,6 +225,7 @@ function fillForm(p) {
   $('step').value = p.step;
   $('sleepH').value = Math.floor(p.sleepMin / 60);
   $('sleepM').value = p.sleepMin % 60;
+  $('startDate').value = p.startDate || todayISO();
   clearErrors();
 }
 
@@ -195,8 +261,11 @@ function readForm() {
     setErr(['sleepH', 'sleepM'], 'sleepErr', '수면 시간은 3~14시간 사이로 입력해주세요.'); ok = false;
   }
 
+  const startDate = $('startDate').value;
+  if (!startDate) { setErr(['startDate'], 'startDateErr', '시작 날짜를 입력해주세요.'); ok = false; }
+
   if (!ok) return null;
-  return { curWake, goalWake, step, sleepMin: h * 60 + m, createdAt: new Date().toISOString() };
+  return { curWake, goalWake, step, sleepMin: h * 60 + m, startDate, createdAt: new Date().toISOString() };
 }
 
 $('planForm').onsubmit = e => {
@@ -212,7 +281,7 @@ $('checkForm').onsubmit = e => {
   e.preventDefault();
   const t = $('actualWake').value;
   if (!t) { $('actualErr').textContent = '기상 시각을 입력해주세요.'; return; }
-  store.set(LAST_KEY, t);
+  store.set(LAST_KEY, JSON.stringify({ time: t, date: todayISO() }));
   showScreen('today');
 };
 
