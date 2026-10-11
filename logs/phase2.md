@@ -48,3 +48,10 @@
 
 ### 진무 메모
 - 
+
+## 데모 아티팩트 게시 — 커밋 `ed7a49a`
+- 요청 원문: `https://claude.ai/artifact/MpRe3ph5RmcVYUkccvtup8?sk=... 이런식으로 우선 만들어달라고 데모버전을`
+- AI 해석: 예시 링크처럼 claude.ai 아티팩트(링크로 여는 페이지) 형태로 현재 앱을 게시. 예시 페이지의 기능·내용(일정 표, 수면 팁, 취침 입력, 이동 폭 선택지, 시작 날짜)은 CLAUDE.md 5장과 충돌해 가져오지 않음 → 진무 확인 필요.
+- 게시 URL: https://claude.ai/artifact/XE32syxEY5Dw5fmBVvw7Do (비공개)
+- index.html과의 차이(게시 규칙 때문): 다크 모드 색 토큰, localStorage 접근 실패 대비 try/catch, html/head 태그 제거. 기능 동일.
+- 확인한 것: 기능 3 시나리오 13개 재실행(문구 변경 1건 외 통과), 다크 모드 360px 화면.
