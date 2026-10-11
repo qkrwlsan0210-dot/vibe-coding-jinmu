@@ -9,10 +9,11 @@
     --bg: #f6f7fb; --card: #ffffff; --text: #1d2233; --muted: #6b7185;
     --accent: #4a5cd6; --err: #d64545; --border: #e2e5ef;
     --sun: #e8963c; --ring: #e9ecf5;
+    --bar: #26305a; --good: #2f7a5a; --soft: #eef0f6;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--text); }
-  main { max-width: 420px; margin: 0 auto; padding: 24px 16px 40px; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 40px; }
   h1 { font-size: 1.3rem; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: .9rem; margin: 0 0 20px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
@@ -56,19 +57,47 @@
   .sched .t small { color: var(--muted); font-size: .75rem; margin-left: 2px; }
   .finish { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font-size: .95rem; }
   .finish b { font-size: 1.05rem; }
-  .dirs { display: grid; gap: 10px; margin-top: 18px; }
-  .dirs > h2 { font-size: 1rem; margin: 0; }
-  .opt { display: block; border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; font-weight: 400; color: var(--text); margin: 0; }
-  .opt:has(input:checked) { border-color: var(--accent); }
-  .opt input { position: absolute; opacity: 0; pointer-events: none; }
-  .opt .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .opt .name { font-weight: 700; font-size: 1rem; }
-  .opt .tag { font-size: .75rem; color: var(--accent); font-weight: 600; }
-  .opt .facts { margin: 6px 0 0; padding: 0; list-style: none; font-size: .88rem; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
-  .opt .facts b { font-weight: 600; }
-  .opt .warn { color: var(--err); }
-  .opt .pc { margin-top: 8px; font-size: .82rem; color: var(--muted); display: grid; gap: 2px; }
+  .pats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px 24px; }
+  .dirs { margin-top: 18px; }
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px 14px; padding-top: 10px; }
+  .opt { position: relative; display: block; background: var(--soft); border: 2px solid var(--border); border-radius: 14px; padding: 18px; cursor: pointer; color: var(--text); font-weight: 400; margin: 0; min-width: 0; }
+  .opt:has(input:checked) { background: var(--card); border-color: var(--bar); }
   .opt:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .opt .badge { position: absolute; top: -10px; right: 14px; background: var(--sun); color: var(--card); font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .opt .name { font-weight: 700; font-size: 1.1rem; }
+  .opt .desc { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+  .opt .mini { display: block; width: 84px; height: 84px; margin: 12px auto 4px; }
+  .mini .base { fill: none; stroke: var(--ring); stroke-width: 7; }
+  .mini .path { fill: none; stroke: var(--bar); stroke-width: 7; stroke-linecap: round; }
+  .mini .lbl { fill: var(--muted); font-size: 7px; text-anchor: middle; }
+  .opt .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 8px; }
+  .opt .stats b { display: block; font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .opt .stats span { color: var(--muted); font-size: .75rem; }
+  .prev { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+  .prev li { display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 8px; font-size: .78rem; font-variant-numeric: tabular-nums; }
+  .prev li.gap { display: block; text-align: center; color: var(--muted); line-height: .6; }
+  .prev .lb { font-weight: 600; }
+  .prev .trk { position: relative; height: 14px; background: var(--ring); border-radius: 4px; overflow: hidden; }
+  .prev .seg { position: absolute; top: 2px; bottom: 2px; background: var(--bar); border-radius: 3px; }
+  .prev li.goal .seg { background: var(--sun); }
+  .prev .tm { white-space: nowrap; }
+  .prev .dl { color: var(--good); margin-left: 2px; }
+  .pc { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 3px; font-size: .82rem; }
+  .pc li::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--good); }
+  .pc li.bad::before { background: var(--sun); }
+  .why { font-size: .9rem; color: var(--muted); margin: 14px 0 0; line-height: 1.6; }
+  .why b { color: var(--text); }
+  .period { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .period .big { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 12px; }
+  .period .big b { display: block; font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .period .big span { color: var(--muted); font-size: .8rem; }
+  .period .big .ok { color: var(--good); }
+  .period .big .fast { color: var(--err); }
+  .period .row { display: flex; align-items: center; gap: 12px; }
+  .period .row label { margin: 0; }
+  .period input[type=range] { flex: 1; padding: 0; border: none; background: none; accent-color: var(--bar); }
+  .period .finish { margin-top: 10px; }
   .dial-hint { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 4px; }
   .done { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
 </style>
@@ -90,6 +119,7 @@
     <h1>회복 플랜 설정</h1>
     <p class="sub">현재 패턴에서 목표 패턴까지 하루씩 조금씩 옮기는 일정을 만듭니다.</p>
     <form class="card" id="planForm" novalidate>
+      <div class="pats">
       <div class="group">
         <h2>현재 패턴</h2>
         <input type="hidden" id="curBed"><input type="hidden" id="curWake">
@@ -102,31 +132,45 @@
         <svg class="dial" id="goalDial" viewBox="0 0 280 280" role="group" aria-label="목표 패턴 시계"></svg>
         <div class="err" id="goalErr"></div>
       </div>
+      </div>
       <p class="dial-hint">🌙 취침과 ☀️ 기상 손잡이를 원을 따라 끌어서 맞추세요 (10분 단위)</p>
       <div class="field" style="margin-top:18px">
         <label for="startDate">적용 날짜</label>
         <input type="date" id="startDate">
         <div class="err" id="startDateErr"></div>
       </div>
-      <div class="field">
-        <label for="days">적용 기간</label>
-        <div class="inline"><input type="number" id="days" inputmode="numeric" min="1" max="365" step="1"><span>일</span></div>
-        <div class="hint">1~365일</div>
-        <div class="err" id="daysErr"></div>
-        <div class="finish" id="finish"></div>
-      </div>
       <div class="dirs" id="dirs">
-        <h2>이동 방향</h2>
-        <label class="opt"><input type="radio" name="dir" id="dirAdvance" value="advance">
-          <div class="top"><span class="name">앞당기기</span><span class="tag" id="advTag"></span></div>
-          <ul class="facts" id="advFacts"></ul>
-          <div class="pc"><span>장점: 이동 거리가 짧으면 빨리 끝나고, 대체로 밤에 자는 흐름을 유지합니다.</span><span>단점: 몸은 일찍 자는 쪽을 잘 못 따라가서 보통 하루 15~30분 정도가 무리 없는 속도로 알려져 있습니다.</span></div>
-        </label>
-        <label class="opt"><input type="radio" name="dir" id="dirDelay" value="delay">
-          <div class="top"><span class="name">미루기</span><span class="tag" id="delTag"></span></div>
-          <ul class="facts" id="delFacts"></ul>
-          <div class="pc"><span>장점: 생체시계는 하루가 24시간보다 조금 길어 늦추는 쪽을 더 쉽게 따라갑니다. 하루 1~3시간씩 미루는 방법(시간요법)도 쓰입니다.</span><span>단점: 시계를 한 바퀴 돌아야 해서 이동 거리가 길고, 중간에 낮에 자야 하는 날이 생깁니다.</span></div>
-        </label>
+        <div class="opts">
+          <label class="opt"><input type="radio" name="dir" id="dirAdvance" value="advance">
+            <span class="badge hidden" id="advBadge">추천</span>
+            <div class="name">앞으로 당기기</div>
+            <div class="desc">매일 조금 일찍 자고 일어나며 거슬러 올라갑니다</div>
+            <svg class="mini" id="advRing" viewBox="0 0 100 100" aria-hidden="true"></svg>
+            <div class="stats" id="advStats"></div>
+            <ol class="prev" id="advPrev"></ol>
+            <ul class="pc"><li>출근·등교하며 할 수 있음</li><li>도착하면 안정적으로 머묾</li><li class="bad">느리고 처음 1~2주 피곤함</li></ul>
+          </label>
+          <label class="opt"><input type="radio" name="dir" id="dirDelay" value="delay">
+            <span class="badge hidden" id="delBadge">추천</span>
+            <div class="name">뒤로 미루기</div>
+            <div class="desc">매일 더 늦게 자며 시계를 한 바퀴 돕니다</div>
+            <svg class="mini" id="delRing" viewBox="0 0 100 100" aria-hidden="true"></svg>
+            <div class="stats" id="delStats"></div>
+            <ol class="prev" id="delPrev"></ol>
+            <ul class="pc"><li>몸의 자연 방향이라 쉽고 빠름</li><li>잠이 안 와서 뒤척일 일이 적음</li><li class="bad">며칠은 낮에 자야 해서 생활 유지 어려움</li></ul>
+          </label>
+        </div>
+        <p class="why" id="why"></p>
+      </div>
+      <div class="period">
+        <div class="big">
+          <div><b id="pDays">-</b><span>걸리는 기간</span></div>
+          <div><b id="pPer">-</b><span>하루에 옮기는 양</span></div>
+          <div><b id="pRate">-</b><span id="pRateL">속도</span></div>
+        </div>
+        <div class="row"><label for="days">기간</label><input type="range" id="days" min="1" max="60" step="1"></div>
+        <div class="err" id="daysErr"></div>
+        <p class="finish" id="finish"></p>
       </div>
       <button type="submit" class="btn">일정 만들기</button>
     </form>
@@ -159,7 +203,7 @@ const dayNum = iso => { const [y, m, d] = iso.split('-').map(Number); return Mat
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const fmtDay = n => { const d = new Date(n * 864e5); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}(${DOW[d.getUTCDay()]})`; };
 
-const DEFAULTS = { curBed: '06:00', curWake: '15:00', goalBed: '23:00', goalWake: '09:00', days: 14 };
+const DEFAULTS = { curBed: '06:00', curWake: '15:00', goalBed: '23:00', goalWake: '09:00' };
 
 // 현재 패턴 → 목표 패턴 일정. 적용 기간(N일) 동안 취침·기상을 각각 (차이 ÷ N)씩 옮겨 N번째 날에 목표 도달.
 // k번째 줄(1~N) 날짜 = 적용 날짜 + (k-1) = 그날의 기상 날짜. 취침 > 기상(분)이면 취침은 전날 밤.
@@ -277,10 +321,11 @@ function showScreen(id) {
 
 function fillForm(p) {
   ['curBed', 'curWake', 'goalBed', 'goalWake'].forEach(k => $(k).value = p[k]);
-  $('days').value = p.days || DEFAULTS.days;
   $('startDate').value = p.startDate || todayISO();
-  const dir = p.dir || shorterDir(p);
+  const dir = p.dir || recommend({ ...p, startDate: $('startDate').value });
   $('dirAdvance').checked = dir === 'advance'; $('dirDelay').checked = dir === 'delay';
+  const n = p.days || recDays(p, dir);
+  $('days').max = Math.max(60, n); $('days').value = n;
   updateFinish();
   dials.cur.draw(); dials.goal.draw();
   clearErrors();
@@ -306,46 +351,90 @@ function readForm() {
     else if (v(b) === v(w)) { setErr([b, w], err, `${name} 패턴의 취침과 기상 시각이 같습니다.`); ok = false; }
   }
   const daysRaw = v('days').trim(), days = Number(daysRaw);
-  if (daysRaw === '' || !Number.isInteger(days) || days < 1 || days > 365) {
-    setErr(['days'], 'daysErr', '적용 기간은 1~365 사이의 정수(일)로 입력해주세요.'); ok = false;
+  if (daysRaw === '' || !Number.isInteger(days) || days < 1 || days > Number($('days').max)) {
+    setErr(['days'], 'daysErr', `기간은 1~${$('days').max}일 사이로 정해주세요.`); ok = false;
   }
   if (!v('startDate')) { setErr(['startDate'], 'startDateErr', '적용 날짜를 입력해주세요.'); ok = false; }
   if (!ok) return null;
   return { curBed: v('curBed'), curWake: v('curWake'), goalBed: v('goalBed'), goalWake: v('goalWake'), days, startDate: v('startDate'), dir: $('dirDelay').checked ? 'delay' : 'advance' };
 }
 
-// 적용 날짜·기간을 바꾸면 완료일과 하루 이동 폭을 바로 보여줌
-function updateFinish() {
-  const d = Number($('days').value), sd = $('startDate').value;
-  if (!sd || !Number.isInteger(d) || d < 1 || d > 365) { $('finish').textContent = '적용 날짜와 기간을 입력하면 완료일이 나옵니다.'; return; }
-  const p = { curBed: $('curBed').value, curWake: $('curWake').value, goalBed: $('goalBed').value, goalWake: $('goalWake').value, days: d, startDate: sd };
-  const per = m => { const x = Math.abs(m) / d; return x < 1 ? `${Math.round(x * 60)}초` : `${Math.round(x)}분`; };
-  const dir = $('dirDelay').checked ? 'delay' : 'advance', mv = moves(p, dir);
-  p.dir = dir;
-  $('finish').innerHTML = `완료일 <b>${fmtDay(finishDay(p))}</b><br><small>하루에 취침 ${per(mv.bed)}, 기상 ${per(mv.wake)}씩 ${dir === 'delay' ? '미룸' : '앞당김'}</small>`;
-  renderDirs(p);
+// ---- 방향 비교 ----
+const PACE = { advance: 30, delay: 90 };  // 하루 권장 이동(분) — 진무가 보여준 화면 기준 [가정]
+const recDays = (p, dir) => { const m = moves(p, dir); return Math.max(1, Math.ceil(Math.max(Math.abs(m.bed), Math.abs(m.wake)) / PACE[dir])); };
+const daySleeps = rows => rows.filter(r => isDaySleep(r.bed)).length;
+const hShort = m => { const h = Math.abs(m) / 60; return (Number.isInteger(h) ? h : h.toFixed(1)) + 'h'; };
+const hm = m => { m = Math.abs(m); return `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}`; };
+function recommend(p) {
+  const s = ['advance', 'delay'].map(dir => { const n = recDays(p, dir); return { dir, n, ds: daySleeps(buildSchedule({ ...p, dir, days: n })) }; });
+  s.sort((a, b) => a.ds - b.ds || a.n - b.n);
+  return s[0].dir;
+}
+const curForm = () => ({ curBed: $('curBed').value, curWake: $('curWake').value, goalBed: $('goalBed').value, goalWake: $('goalWake').value,
+  startDate: $('startDate').value || todayISO(), days: Number($('days').value), dir: $('dirDelay').checked ? 'delay' : 'advance' });
+
+// 미니 원: 현재 취침(진한 점) → 목표 취침(주황 점), 이동하는 길을 굵게
+function drawRing(svg, p, dir) {
+  const r = 34, c = 50, P = m => { const a = m / 1440 * 2 * Math.PI; return [c + r * Math.sin(a), c - r * Math.cos(a)]; };
+  const from = toMin(p.curBed), mv = moves(p, dir).bed, to = wrap(from + mv);
+  const [s0, s1] = mv >= 0 ? [from, to] : [to, from], span = Math.abs(mv);
+  const [x0, y0] = P(s0), [x1, y1] = P(s1), [cx, cy] = P(from), [gx, gy] = P(to);
+  svg.innerHTML = `<circle class="base" cx="50" cy="50" r="${r}"/>` +
+    (span ? `<path class="path" d="M ${x0} ${y0} A ${r} ${r} 0 ${span > 720 ? 1 : 0} 1 ${x1} ${y1}"/>` : '') +
+    `<circle cx="${cx}" cy="${cy}" r="5" fill="var(--bar)"/><circle cx="${gx}" cy="${gy}" r="5" fill="var(--sun)"/>` +
+    `<text class="lbl" x="50" y="9">0시</text><text class="lbl" x="50" y="97">12시</text>`;
+}
+// 18시 → 다음 날 18시 막대 위에 자는 구간
+function bar(bed, wake) {
+  const L = wrap(bed - 1080), W = wrap(wake - bed), seg = (a, w) => `<span class="seg" style="left:${a / 14.4}%;width:${w / 14.4}%"></span>`;
+  return L + W <= 1440 ? seg(L, W) : seg(L, 1440 - L) + seg(0, L + W - 1440);
+}
+const delta = m => m ? `${m > 0 ? '+' : '−'}${Math.abs(m)}분` : '';
+function renderOption(p, dir, key, isRec) {
+  const n = recDays(p, dir), rows = buildSchedule({ ...p, dir, days: n }), mv = moves(p, dir);
+  $(key + 'Badge').classList.toggle('hidden', !isRec);
+  drawRing($(key + 'Ring'), p, dir);
+  $(key + 'Stats').innerHTML = `<div><b>${n}일</b><span>걸리는 날</span></div><div><b>${daySleeps(rows)}일</b><span>낮에 자는 날</span></div><div><b>${hShort(mv.bed)}</b><span>옮길 거리</span></div>`;
+  const line = (lb, bed, wake, prevBed, goal) => `<li class="${goal ? 'goal' : ''}"><span class="lb">${lb}</span><span class="trk">${bar(bed, wake)}</span><span class="tm">${fmt(bed)}→${fmt(wake)}${goal ? ' 목표' : prevBed === null ? '' : `<span class="dl">${delta(shortestDiff(prevBed, bed))}</span>`}</span></li>`;
+  let html = line('지금', toMin(p.curBed), toMin(p.curWake), null, false), prev = toMin(p.curBed);
+  const show = rows.length <= 4 ? rows : rows.slice(0, 3);
+  show.forEach((r, i) => { const last = r === rows.at(-1); html += line(i === 0 ? '첫날' : `${i + 1}일째`, r.bed, r.wake, prev, last); prev = r.bed; });
+  if (rows.length > 4) { const r = rows.at(-1); html += `<li class="gap">· · ·</li>` + line(`${rows.length}일째`, r.bed, r.wake, null, true); }
+  $(key + 'Prev').innerHTML = html;
 }
 
-// 두 방향을 같은 기간 기준으로 비교해 보여줌
-const hm = m => { m = Math.abs(m); return `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}`; };
-function renderDirs(p) {
+function updateFinish() {
+  const p = curForm();
   const same = toMin(p.curBed) === toMin(p.goalBed) && toMin(p.curWake) === toMin(p.goalWake);
   $('dirs').classList.toggle('hidden', same);
-  if (same) return;
-  const short = shorterDir(p);
-  for (const [dir, key, limit, limitText] of [['advance', 'adv', 30, '하루 30분'], ['delay', 'del', 180, '하루 3시간']]) {
-    const mv = moves(p, dir), perB = Math.abs(mv.bed) / p.days, perW = Math.abs(mv.wake) / p.days;
-    const rows = buildSchedule({ ...p, dir }), daySleep = rows.filter(r => isDaySleep(r.bed)).length;
-    const fast = Math.max(perB, perW) > limit;
-    $(key + 'Tag').textContent = dir === short ? '이동 거리가 더 짧음' : '';
-    $(key + 'Facts').innerHTML =
-      `<li>총 이동: 취침 <b>${hm(mv.bed)}</b> · 기상 <b>${hm(mv.wake)}</b></li>` +
-      `<li class="${fast ? 'warn' : ''}">하루 이동: 취침 <b>${Math.round(perB)}분</b> · 기상 <b>${Math.round(perW)}분</b>${fast ? ` (${limitText}보다 빠름)` : ''}</li>` +
-      `<li>낮(08~18시)에 자는 날: <b>${daySleep}일</b></li>` +
-      `<li>완료일: <b>${rows.length ? fmtDay(rows.at(-1).day) : '-'}</b></li>`;
+  const rec = same ? 'advance' : recommend(p);
+  if (!same) {
+    renderOption(p, 'advance', 'adv', rec === 'advance');
+    renderOption(p, 'delay', 'del', rec === 'delay');
+    const a = moves(p, 'advance').bed, d = moves(p, 'delay').bed;
+    const other = rec === 'advance' ? 'delay' : 'advance', on = recDays(p, other), ods = daySleeps(buildSchedule({ ...p, dir: other, days: on }));
+    $('why').innerHTML = rec === 'advance'
+      ? `목표보다 <b>${hm(a)}</b> 늦게 자고 있어 거리가 가깝습니다. 생활을 유지하면서 <b>앞으로 당기기</b> 쪽이 맞아요. 뒤로 돌리면 ${on}일 중 ${ods}일을 낮에 자야 합니다.`
+      : `목표보다 <b>${hm(d)}</b> 일찍 자고 있어 뒤로 미루는 거리가 가깝습니다. <b>뒤로 미루기</b> 쪽이 맞아요. 앞으로 당기면 ${on}일${ods ? `이 걸리고 그중 ${ods}일은 낮에 자야 합니다` : '이 걸립니다'}.`;
   }
+  const d = p.days, mv = moves(p, p.dir);
+  if (!Number.isInteger(d) || d < 1) { $('finish').textContent = ''; return; }
+  const per = Math.max(Math.abs(mv.bed), Math.abs(mv.wake)) / d, fast = per > PACE[p.dir];
+  $('pDays').textContent = `${d}일`;
+  $('pPer').textContent = `${Math.round(per)}분`;
+  $('pRate').textContent = same ? '-' : fast ? '빠름' : '권장';
+  $('pRate').className = same ? '' : fast ? 'fast' : 'ok';
+  $('pRateL').textContent = `${p.dir === 'delay' ? '미루기' : '당기기'} 권장 하루 ${PACE[p.dir]}분`;
+  $('finish').innerHTML = same ? '' : `완료일 <b>${fmtDay(finishDay(p))}</b> · 하루에 취침 ${Math.round(Math.abs(mv.bed) / d)}분, 기상 ${Math.round(Math.abs(mv.wake) / d)}분씩 ${p.dir === 'delay' ? '미룸' : '앞당김'}`;
 }
-['days', 'startDate', 'dirAdvance', 'dirDelay'].forEach(id => { $(id).addEventListener('input', updateFinish); $(id).addEventListener('change', updateFinish); });
+// 방향 카드를 고르면 그 방향의 권장 기간으로 슬라이더를 맞춤
+function pickDir() {
+  const p = curForm(), n = recDays(p, p.dir);
+  $('days').max = Math.max(60, n); $('days').value = n;
+  updateFinish();
+}
+['dirAdvance', 'dirDelay'].forEach(id => $(id).addEventListener('change', pickDir));
+['days', 'startDate'].forEach(id => $(id).addEventListener('input', updateFinish));
 
 $('planForm').onsubmit = e => {
   e.preventDefault();
