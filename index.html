@@ -308,7 +308,7 @@ function renderSchedule() {
   $('sched').classList.toggle('hidden', rows.length === 0);
   $('sameMsg').classList.toggle('hidden', rows.length !== 0);
   $('schedTitle').textContent = rows.length ? `${fmtDay(dayNum(plan.startDate))} ~ ${fmtDay(finishDay(plan))} 완료` : '일정';
-  if (rows.length) $('schedTitle').textContent += ` (${plan.days}일 계획 · ${(plan.dir || shorterDir(plan)) === 'delay' ? '미루기' : '앞당기기'})`;
+  if (rows.length) $('schedTitle').textContent += ` (${plan.days}일 계획 · ${(plan.dir || shorterDir(plan)) === 'delay' ? '뒤로 미루기' : '앞으로 당기기'})`;
   $('schedSub').textContent = `${plan.curBed} 취침 · ${plan.curWake} 기상 → ${plan.goalBed} 취침 · ${plan.goalWake} 기상`;
   $('schedList').innerHTML = rows.map(r =>
     `<li><span class="d">${fmtDay(r.day)}</span><span class="t">취침<b>${fmt(r.bed)}</b>${r.prevNight ? '<small>전날</small>' : ''}</span><span class="t">기상<b>${fmt(r.wake)}</b></span></li>`).join('');
@@ -435,8 +435,8 @@ function updateFinish() {
   $('pPer').textContent = `${Math.round(per)}분`;
   $('pRate').textContent = same ? '-' : fast ? '빠름' : '권장';
   $('pRate').className = same ? '' : fast ? 'fast' : 'ok';
-  $('pRateL').textContent = `${p.dir === 'delay' ? '미루기' : '당기기'} 권장 하루 ${PACE[p.dir]}분`;
-  $('finish').innerHTML = same ? '' : `완료일 <b>${fmtDay(finishDay(p))}</b> · 하루에 취침 ${Math.round(Math.abs(mv.bed) / d)}분, 기상 ${Math.round(Math.abs(mv.wake) / d)}분씩 ${p.dir === 'delay' ? '미룸' : '앞당김'}`;
+  $('pRateL').textContent = `${p.dir === 'delay' ? '뒤로 미루기' : '앞으로 당기기'} 권장 하루 ${PACE[p.dir]}분`;
+  $('finish').innerHTML = same ? '' : `완료일 <b>${fmtDay(finishDay(p))}</b> · 하루에 취침 ${Math.round(Math.abs(mv.bed) / d)}분, 기상 ${Math.round(Math.abs(mv.wake) / d)}분씩 ${p.dir === 'delay' ? '뒤로 미룸' : '앞으로 당김'}`;
 }
 // 방향을 바꿔도 기간은 그대로 둠 (두 방식을 같은 기간으로 비교)
 function pickDir() { updateFinish(); }
