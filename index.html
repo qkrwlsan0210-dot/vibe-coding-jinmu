@@ -366,9 +366,16 @@ const recDays = (p, dir) => { const m = moves(p, dir); return Math.max(1, Math.c
 const daySleeps = rows => rows.filter(r => isDaySleep(r.bed)).length;
 const hShort = m => { const h = Math.abs(m) / 60; return (Number.isInteger(h) ? h : h.toFixed(1)) + 'h'; };
 const hm = m => { m = Math.abs(m); return `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}`; };
+// 두 카드가 같이 쓰는 기간: 슬라이더 값 (없으면 그 방향의 권장 기간)
+const validDays = p => Number.isInteger(p.days) && p.days >= 1;
+const daysFor = (p, dir) => validDays(p) ? p.days : recDays(p, dir);
+// 추천: 낮에 자는 날이 적은 쪽, 같으면 권장 속도 대비 덜 빠른 쪽 [가정]
 function recommend(p) {
-  const s = ['advance', 'delay'].map(dir => { const n = recDays(p, dir); return { dir, n, ds: daySleeps(buildSchedule({ ...p, dir, days: n })) }; });
-  s.sort((a, b) => a.ds - b.ds || a.n - b.n);
+  const s = ['advance', 'delay'].map(dir => {
+    const n = daysFor(p, dir), m = moves(p, dir);
+    return { dir, ds: daySleeps(buildSchedule({ ...p, dir, days: n })), load: Math.max(Math.abs(m.bed), Math.abs(m.wake)) / n / PACE[dir] };
+  });
+  s.sort((a, b) => a.ds - b.ds || a.load - b.load);
   return s[0].dir;
 }
 const curForm = () => ({ curBed: $('curBed').value, curWake: $('curWake').value, goalBed: $('goalBed').value, goalWake: $('goalWake').value,
@@ -391,10 +398,9 @@ function bar(bed, wake) {
   return L + W <= 1440 ? seg(L, W) : seg(L, 1440 - L) + seg(0, L + W - 1440);
 }
 const delta = m => m ? `${m > 0 ? '+' : '−'}${Math.abs(m)}분` : '';
-// 고른 방향 카드는 아래 기간 슬라이더 값을, 다른 카드는 그 방향의 권장 기간을 보여줌
+// 두 카드 모두 아래 기간 슬라이더 값으로 계산 (진무 요청: 기간을 바꾸면 두 방식이 동시에 바뀜)
 function renderOption(p, dir, key, isRec) {
-  const sel = dir === p.dir && Number.isInteger(p.days) && p.days >= 1;
-  const n = sel ? p.days : recDays(p, dir), rows = buildSchedule({ ...p, dir, days: n }), mv = moves(p, dir);
+  const n = daysFor(p, dir), rows = buildSchedule({ ...p, dir, days: n }), mv = moves(p, dir);
   $(key + 'Badge').classList.toggle('hidden', !isRec);
   drawRing($(key + 'Ring'), p, dir);
   $(key + 'Stats').innerHTML = `<div><b>${n}일</b><span>걸리는 날</span></div><div><b>${daySleeps(rows)}일</b><span>낮에 자는 날</span></div><div><b>${hShort(mv.bed)}</b><span>옮길 거리</span></div>`;
@@ -415,7 +421,7 @@ function updateFinish() {
     renderOption(p, 'advance', 'adv', rec === 'advance');
     renderOption(p, 'delay', 'del', rec === 'delay');
     const a = moves(p, 'advance').bed, d = moves(p, 'delay').bed;
-    const other = rec === 'advance' ? 'delay' : 'advance', on = recDays(p, other), ods = daySleeps(buildSchedule({ ...p, dir: other, days: on }));
+    const other = rec === 'advance' ? 'delay' : 'advance', on = daysFor(p, other), ods = daySleeps(buildSchedule({ ...p, dir: other, days: on }));
     $('why').innerHTML = rec === 'advance'
       ? `목표보다 <b>${hm(a)}</b> 늦게 자고 있어 거리가 가깝습니다. 생활을 유지하면서 <b>앞으로 당기기</b> 쪽이 맞아요. 뒤로 돌리면 ${on}일 중 ${ods}일을 낮에 자야 합니다.`
       : `목표보다 <b>${hm(d)}</b> 일찍 자고 있어 뒤로 미루는 거리가 가깝습니다. <b>뒤로 미루기</b> 쪽이 맞아요. 앞으로 당기면 ${on}일${ods ? `이 걸리고 그중 ${ods}일은 낮에 자야 합니다` : '이 걸립니다'}.`;
@@ -430,12 +436,8 @@ function updateFinish() {
   $('pRateL').textContent = `${p.dir === 'delay' ? '미루기' : '당기기'} 권장 하루 ${PACE[p.dir]}분`;
   $('finish').innerHTML = same ? '' : `완료일 <b>${fmtDay(finishDay(p))}</b> · 하루에 취침 ${Math.round(Math.abs(mv.bed) / d)}분, 기상 ${Math.round(Math.abs(mv.wake) / d)}분씩 ${p.dir === 'delay' ? '미룸' : '앞당김'}`;
 }
-// 방향 카드를 고르면 그 방향의 권장 기간으로 슬라이더를 맞춤
-function pickDir() {
-  const p = curForm(), n = recDays(p, p.dir);
-  $('days').max = Math.max(60, n); $('days').value = n;
-  updateFinish();
-}
+// 방향을 바꿔도 기간은 그대로 둠 (두 방식을 같은 기간으로 비교)
+function pickDir() { updateFinish(); }
 ['dirAdvance', 'dirDelay'].forEach(id => $(id).addEventListener('change', pickDir));
 ['days', 'startDate'].forEach(id => $(id).addEventListener('input', updateFinish));
 
