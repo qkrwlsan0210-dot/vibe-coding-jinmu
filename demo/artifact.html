@@ -1,0 +1,230 @@
+<title>수면 리듬 회복</title>
+<style>
+  :root {
+    --bg: #f6f7fb; --card: #ffffff; --text: #1d2233; --muted: #6b7185;
+    --accent: #4a5cd6; --err: #d64545; --border: #e2e5ef; --field: #ffffff; --on-accent: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12152a; --card: #1b1f38; --text: #e9ebf5; --muted: #a2a8c2; --accent: #8c9bff; --err: #ff7b7b; --border: #2e3457; --field: #12152a; --on-accent: #12152a; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #12152a; --card: #1b1f38; --text: #e9ebf5; --muted: #a2a8c2; --accent: #8c9bff; --err: #ff7b7b; --border: #2e3457; --field: #12152a; --on-accent: #12152a; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 420px; margin: 0 auto; padding: 24px 16px 40px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: .9rem; margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+  .field { margin-bottom: 18px; }
+  label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
+  .hint { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  input { font-size: 1.05rem; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--field); color: var(--text); width: 100%; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  input.bad { border-color: var(--err); }
+  .inline { display: flex; align-items: center; gap: 8px; }
+  .inline input { width: 90px; }
+  .err { color: var(--err); font-size: .85rem; margin-top: 4px; }
+  .btn { display: block; width: 100%; margin-top: 4px; padding: 14px; border: none; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 1.05rem; font-weight: 600; cursor: pointer; }
+  .link { background: none; border: none; color: var(--accent); font-size: .95rem; cursor: pointer; padding: 8px 0; }
+  .hidden { display: none !important; }
+  .times { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .time { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px; text-align: center; }
+  .time .l { color: var(--muted); font-size: .9rem; font-weight: 600; }
+  .time .v { font-size: 2.2rem; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .time.wake .v { color: var(--accent); }
+  .progress { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: center; font-size: 1rem; }
+  .progress b { font-size: 1.2rem; }
+  .check { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-top: 12px; }
+  .check label { margin-bottom: 8px; }
+  .check .row { display: flex; gap: 8px; }
+  .check .row input { flex: 1; }
+  .check .row .btn { width: auto; margin: 0; padding: 10px 16px; white-space: nowrap; }
+</style>
+<main>
+
+  <!-- 화면 1: 오늘 (기능 2에서 구현) -->
+  <section id="today" class="hidden">
+    <h1>오늘</h1>
+    <p class="sub">이 시각에 맞춰 자고 일어나세요.</p>
+    <div class="times">
+      <div class="time"><div class="l">다음 취침</div><div class="v" id="nextBed">--:--</div></div>
+      <div class="time wake"><div class="l">다음 기상</div><div class="v" id="nextWake">--:--</div></div>
+    </div>
+    <div class="progress" id="progress"></div>
+    <form class="check" id="checkForm">
+      <label for="actualWake">실제 기상 시각</label>
+      <div class="row">
+        <input type="time" id="actualWake">
+        <button type="submit" class="btn">일어났어요</button>
+      </div>
+      <div class="err" id="actualErr"></div>
+    </form>
+    <button class="link" id="editPlan">플랜 수정</button>
+  </section>
+
+  <!-- 화면 2: 플랜 설정 -->
+  <section id="setup" class="hidden">
+    <h1>회복 플랜 설정</h1>
+    <p class="sub">지금 일어나는 시각에서 목표 시각까지 하루씩 조금씩 옮겨 갑니다.</p>
+    <form class="card" id="planForm" novalidate>
+      <div class="field">
+        <label for="curWake">현재 평소 기상 시각</label>
+        <input type="time" id="curWake">
+        <div class="err" id="curWakeErr"></div>
+      </div>
+      <div class="field">
+        <label for="goalWake">목표 기상 시각</label>
+        <input type="time" id="goalWake">
+        <div class="err" id="goalWakeErr"></div>
+      </div>
+      <div class="field">
+        <label for="step">하루 이동 폭</label>
+        <div class="inline"><input type="number" id="step" inputmode="numeric" min="1" max="180" step="1"><span>분</span></div>
+        <div class="hint">1~180분</div>
+        <div class="err" id="stepErr"></div>
+      </div>
+      <div class="field">
+        <label for="sleepH">수면 시간</label>
+        <div class="inline">
+          <input type="number" id="sleepH" inputmode="numeric" min="3" max="14" step="1"><span>시간</span>
+          <input type="number" id="sleepM" inputmode="numeric" min="0" max="59" step="1"><span>분</span>
+        </div>
+        <div class="hint">3~14시간</div>
+        <div class="err" id="sleepErr"></div>
+      </div>
+      <button type="submit" class="btn">플랜 저장</button>
+    </form>
+    <button class="link hidden" id="cancelEdit">취소</button>
+  </section>
+
+</main>
+<script>
+const store = {
+  get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+  del: k => { try { localStorage.removeItem(k); } catch {} },
+};
+const PLAN_KEY = 'sleepPlan';
+const DEFAULTS = { curWake: '13:00', goalWake: '08:00', step: 30, sleepMin: 480 };
+const $ = id => document.getElementById(id);
+
+// ---- 시각 계산 (분 단위, 0~1439) ----
+const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const wrap = m => ((m % 1440) + 1440) % 1440;
+const fmt = m => { m = wrap(m); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+
+// 기준 기상 시각(from)에서 목표(goal)까지 짧은 쪽 방향의 차이(분). 정확히 12시간이면 앞당기는 쪽(음수) [가정]
+function shortestDiff(from, goal) {
+  let d = wrap(goal - from);
+  if (d > 720) d -= 1440;
+  if (d === 720) d = -720;
+  return d;
+}
+
+// 기준 기상 시각에서 1단계 이동한 다음 일정
+function nextSchedule(baseWake, plan) {
+  const goal = toMin(plan.goalWake);
+  const d = shortestDiff(baseWake, goal);
+  if (d === 0) return { reached: true, wake: goal, bed: wrap(goal - plan.sleepMin), daysLeft: 0 };
+  const move = Math.sign(d) * Math.min(plan.step, Math.abs(d));
+  const wake = wrap(baseWake + move);
+  return { reached: false, wake, bed: wrap(wake - plan.sleepMin), daysLeft: Math.ceil(Math.abs(d) / plan.step) };
+}
+
+function renderToday() {
+  const plan = loadPlan();
+  if (!plan) return;
+  const last = store.get(LAST_KEY);
+  // 규칙: 다음 목표 = 마지막 실제 기상 시각 + 1단계 (기록이 없으면 플랜의 현재 기상 시각)
+  const s = nextSchedule(toMin(last || plan.curWake), plan);
+  $('nextBed').textContent = fmt(s.bed);
+  $('nextWake').textContent = fmt(s.wake);
+  $('progress').innerHTML = s.reached
+    ? '🎉 <b>목표 도달</b> · 유지 단계<br><small>매일 이 시각에 맞춰 자고 일어나세요</small>'
+    : s.daysLeft === 1 ? '다음 기상이면 <b>목표 도달</b>' : `목표까지 <b>${s.daysLeft}일</b>`;
+}
+
+const LAST_KEY = 'lastActualWake';
+const nowHHMM = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+
+function loadPlan() {
+  try { return JSON.parse(store.get(PLAN_KEY)); } catch { return null; }
+}
+
+function showScreen(id) {
+  ['today', 'setup'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  if (id === 'today') { renderToday(); $('actualWake').value = nowHHMM(); $('actualErr').textContent = ''; }
+  window.scrollTo(0, 0);
+}
+
+function fillForm(p) {
+  $('curWake').value = p.curWake;
+  $('goalWake').value = p.goalWake;
+  $('step').value = p.step;
+  $('sleepH').value = Math.floor(p.sleepMin / 60);
+  $('sleepM').value = p.sleepMin % 60;
+  clearErrors();
+}
+
+function clearErrors() {
+  document.querySelectorAll('.err').forEach(e => e.textContent = '');
+  document.querySelectorAll('input.bad').forEach(i => i.classList.remove('bad'));
+}
+
+function setErr(inputIds, errId, msg) {
+  inputIds.forEach(i => $(i).classList.add('bad'));
+  $(errId).textContent = msg;
+}
+
+// 입력 검증: 문제가 없으면 플랜 객체, 있으면 null
+function readForm() {
+  clearErrors();
+  let ok = true;
+  const curWake = $('curWake').value, goalWake = $('goalWake').value;
+  if (!curWake) { setErr(['curWake'], 'curWakeErr', '현재 기상 시각을 입력해주세요.'); ok = false; }
+  if (!goalWake) { setErr(['goalWake'], 'goalWakeErr', '목표 기상 시각을 입력해주세요.'); ok = false; }
+
+  const stepRaw = $('step').value.trim();
+  const step = Number(stepRaw);
+  if (stepRaw === '' || !Number.isInteger(step) || step < 1 || step > 180) {
+    setErr(['step'], 'stepErr', '하루 이동 폭은 1~180 사이의 정수(분)로 입력해주세요.'); ok = false;
+  }
+
+  const hRaw = $('sleepH').value.trim(), mRaw = $('sleepM').value.trim();
+  const h = Number(hRaw), m = mRaw === '' ? 0 : Number(mRaw);
+  if (hRaw === '' || !Number.isInteger(h) || !Number.isInteger(m) || m < 0 || m > 59) {
+    setErr(['sleepH', 'sleepM'], 'sleepErr', '수면 시간은 시간(정수)과 분(0~59)으로 입력해주세요.'); ok = false;
+  } else if (h * 60 + m < 180 || h * 60 + m > 840) {
+    setErr(['sleepH', 'sleepM'], 'sleepErr', '수면 시간은 3~14시간 사이로 입력해주세요.'); ok = false;
+  }
+
+  if (!ok) return null;
+  return { curWake, goalWake, step, sleepMin: h * 60 + m, createdAt: new Date().toISOString() };
+}
+
+$('planForm').onsubmit = e => {
+  e.preventDefault();
+  const plan = readForm();
+  if (!plan) { const bad = document.querySelector('input.bad'); if (bad) bad.focus(); return; }
+  store.set(PLAN_KEY, JSON.stringify(plan));
+  store.del(LAST_KEY);  // 새 플랜은 입력한 '현재 기상 시각'부터 시작 [가정]
+  showScreen('today');
+};
+
+$('checkForm').onsubmit = e => {
+  e.preventDefault();
+  const t = $('actualWake').value;
+  if (!t) { $('actualErr').textContent = '기상 시각을 입력해주세요.'; return; }
+  store.set(LAST_KEY, t);
+  showScreen('today');
+};
+
+$('editPlan').onclick = () => {
+  fillForm(loadPlan() || DEFAULTS);
+  $('cancelEdit').classList.remove('hidden');
+  showScreen('setup');
+};
+$('cancelEdit').onclick = () => showScreen('today');
+
+// 시작: 플랜이 없으면 설정 화면부터
+const saved = loadPlan();
+if (saved) showScreen('today');
+else { fillForm(DEFAULTS); showScreen('setup'); }
+</script>
