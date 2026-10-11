@@ -46,17 +46,7 @@
 
 ## 3. 문제 사례 (3건 이상)
 
-> ⚠️ README 채점표에 "사례별 5항목"이 있지만 항목 목록은 README에 없습니다. 아래 5칸은 채점표의 다른 기준(프롬프트 원문·증거·전/후 비교)을 반영한 **임시 구성**입니다. 강의에서 안내된 5항목이 있으면 그에 맞게 바꾸세요.
-
-### 사례 작성 칸 (복사해서 사용)
-
-| 항목 | 내용 |
-|---|---|
-| ① 상황과 내 의도 | ✍️ |
-| ② 실제 프롬프트 원문 | ✍️ |
-| ③ AI 결과와 의도의 차이 (증거) | ✍️ 📎 |
-| ④ 내 대응 (개입 / 비개입 판단과 이유) | ✍️ |
-| ⑤ 결과 전/후 비교와 배운 점 | ✍️ |
+> 사례는 3-1절에 진무가 정한 형식(제목·유형·프롬프트·AI 출력·판단과 근거·결과)으로 정리했습니다. 아래 표는 사례를 고를 때 참고할 사실 목록입니다.
 
 ### 사례 후보 (로그 기록 사실)
 
@@ -193,7 +183,7 @@
 |---|---|
 | 유형 | 🔴 **개입함** (작업 지시) |
 | 프롬프트 | `이제 깃헙 연동 작업을 해야겠네` |
-| AI 출력 | `logs/phase2.md` "GitHub 업로드·Pages 배포" 참고 |
+| AI 출력 | `logs/phase2.md` "GitHub 업로드·Pages 배포" 참고, 기록 커밋 `f89e82d` |
 | 판단과 근거 | ✍️ |
 | 결과 | 저장소·Pages 배포. ※ 이 구간 대화는 현재 AI에게 보이지 않아 AI가 내용을 대조하지 못함 — 진무 확인 필요 |
 
@@ -243,35 +233,82 @@
 | 기능 6에서 AI가 지운 카드 | ⚪ 개입하지 않음 | `이것만 적용해` 이후 따로 지시 없음 | 다음 취침/기상·남은 일수 카드 삭제 | ✍️ | 첫 화면 = 일정 목록으로 굳어짐 |
 
 
-### 사례 1 — ✍️ 제목
+## 3-2. 사례별 커밋 해시와 diff 요약
+
+> diff 크기는 `git show --numstat <커밋>` 결과. 앞 커밋 → 뒤 커밋으로 비교하려면 `git diff <전> <후> -- index.html`.
+
+| 사례 | 변경 커밋 | 바뀐 파일 (+추가 / −삭제 줄) | diff 요약 |
+|---|---|---|---|
+| P1 데모 | `ed7a49a` | demo/artifact.html +230 | 앱을 링크로 열 수 있는 데모 파일 새로 만듦 (기능 동일, 다크 모드·저장 예외 처리만 추가) |
+| P2 일정 목록 | `1355462`, `4258219` | CLAUDE.md +6/−4, index.html +73/−4 | `buildSchedule()` 추가 — 목표까지 하루 한 줄 `날짜·취침·기상` 계산, 오늘 화면 아래 목록, 플랜에 시작 날짜 입력 |
+| P3 패턴 입력 | `bc44dfd`, `9b3e251` | CLAUDE.md +11/−17, index.html +68/−155 | 입력을 현재·목표 패턴(취침·기상)+적용 날짜로 교체, 기상 기록·다음 취침/기상 카드 코드 삭제(−155줄) |
+| P4 원형 다이얼 | `232bb78` | CLAUDE.md +1, index.html +85/−9 | `makeDial()` 추가 — SVG 24시간 원, 취침·기상 손잡이 드래그(pointer 이벤트), 10분 스냅 |
+| P5-1 기간·완료일 | `f30c680` | CLAUDE.md +5/−5, index.html +44/−29 | 이동 폭 입력 삭제 → 기간 입력, 하루 이동 = 차이 × k ÷ 기간, 완료일 표시 |
+| P5-2 날짜 기준 맡김 | `f30c680` → `a4d0435` | (위와 같음) | 줄 날짜를 "적용일+N" → 기능 9에서 "실제 기상 날짜(절대 시간 누적)"로 AI가 변경 |
+| P6 5분 단위 | `0cec3db` | CLAUDE.md +1/−1, index.html +3/−1 | 아래 코드 |
+| P7 방향 비교(글자) | `a4d0435` | CLAUDE.md +5/−3, index.html +73/−10 | `moves()`·`dirDiff()`로 앞당기기/미루기 이동량 계산, 라디오 선택, 비교 목록 |
+| P8 참고 화면 방식 | `f9c7776` | CLAUDE.md +9/−8, index.html +151/−62 | 비교 카드(원·통계·미리보기·장단점·추천) `renderOption()`, 기간 슬라이더, `recommend()` |
+| P9 카드↔기간 | `940573c` | CLAUDE.md +1, index.html +5/−2 | 아래 코드 |
+| P10 동시 변경 | `f7e6908` | CLAUDE.md +3/−4, index.html +14/−12 | 아래 코드 |
+| P11 자는 시간 | `6120623` | CLAUDE.md +2/−2, index.html +5/−3 | 아래 코드 |
+| P12 GitHub 연동 | `f89e82d` | logs/phase2.md +7 | 업로드·Pages 배포 기록 (코드 변경 없음) |
+| P13 출처 명시 | `d6db269` | CLAUDE.md, REFLECTION.md, logs/phase2.md 각 1~2줄 | 다이얼 = "진무 지시" 명시 |
+| P14 재점검 | `8c5c887` | CLAUDE.md +7/−7, logs +36/−9, REFLECTION.md +2/−1 | `[AI 작성]`·`[AI 해석]` 표시 추가 |
+| P15 변경 반영 | `bb9dcef` | CLAUDE.md +23/−2, index.html +3/−3, demo +3/−3, REFLECTION.md +2/−1 | 화면·작업 방식·지시 이력 갱신, 방향 이름 통일 |
+| P16 판단 기록 | `2af618b` | REFLECTION.md +170, 스크린샷 19장 | 이 문서 3-1절 |
+
+### 변경 전후 코드 (작은 수정)
+
+**P6 — `0cec3db`** 일정 시각 5분 단위
+```diff
++const r5 = m => Math.round(m / 5) * 5;
+-    const bed = wrap(cBed + Math.round(dBed * k / n)), wake = wrap(cWake + Math.round(dWake * k / n));
++    const bed = wrap(cBed + r5(dBed * k / n)), wake = wrap(cWake + r5(dWake * k / n));
+```
+
+**P9 — `940573c`** 고른 카드가 슬라이더 기간을 따름
+```diff
+-  const n = recDays(p, dir), rows = buildSchedule({ ...p, dir, days: n }), mv = moves(p, dir);
++  const sel = dir === p.dir && Number.isInteger(p.days) && p.days >= 1;
++  const n = sel ? p.days : recDays(p, dir), rows = buildSchedule({ ...p, dir, days: n }), mv = moves(p, dir);
+```
+
+**P10 — `f7e6908`** 두 카드가 같은 기간, 방향 바꿔도 기간 유지
+```diff
++const daysFor = (p, dir) => validDays(p) ? p.days : recDays(p, dir);
+-  const sel = dir === p.dir && Number.isInteger(p.days) && p.days >= 1;
+-  const n = sel ? p.days : recDays(p, dir), rows = ...
++  const n = daysFor(p, dir), rows = ...
+-function pickDir() {
+-  const p = curForm(), n = recDays(p, p.dir);
+-  $('days').max = Math.max(60, n); $('days').value = n;
+-  updateFinish();
+-}
++function pickDir() { updateFinish(); }
+```
+
+**P11 — `6120623`** 변화량(빨간색) → 그날 자는 시간
+```diff
+-  .prev .dl.fast { color: var(--err); }
++const sleepLen = m => `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}`;
+-  ...${fmt(bed)}→${fmt(wake)}${goal ? ' 목표' : ... delta(shortestDiff(prevBed, bed)) ...}
++  ...${fmt(bed)}→${fmt(wake)}<span class="dl">${sleepLen(wrap(wake - bed))}${goal ? ' · 목표' : ''}</span>
+```
+
+---
+
+## 3-3. 저장소 교환 기록
+
+> ✍️ 짝과 저장소를 바꿔 본 뒤 진무가 작성. (AI는 이 활동에 참여하지 않았고, 기록도 없음)
 
 | 항목 | 내용 |
 |---|---|
-| ① 상황과 내 의도 | |
-| ② 실제 프롬프트 원문 | |
-| ③ AI 결과와 의도의 차이 (증거) | |
-| ④ 내 대응 | |
-| ⑤ 전/후 비교와 배운 점 | |
+| 짝 이름 | ✍️ |
+| 짝 저장소 주소 | ✍️ |
+| 상대 코드에서 고칠 위치를 찾는 데 걸린 시간 | ✍️ (예: 무엇을 고치려 했고, 어느 파일·함수에서 찾았는지, 몇 분) |
+| 내 코드에서 상대가 막힌 지점 | ✍️ (상대가 찾지 못했거나 헷갈린 곳 — 이 앱이라면 `buildSchedule()`, `renderOption()`, 다이얼 `makeDial()` 등 어디였는지) |
+| 그 뒤 내가 바꾼 것 | ✍️ (있으면 커밋 해시) |
 
-### 사례 2 — ✍️ 제목
-
-| 항목 | 내용 |
-|---|---|
-| ① 상황과 내 의도 | |
-| ② 실제 프롬프트 원문 | |
-| ③ AI 결과와 의도의 차이 (증거) | |
-| ④ 내 대응 | |
-| ⑤ 전/후 비교와 배운 점 | |
-
-### 사례 3 — ✍️ 제목
-
-| 항목 | 내용 |
-|---|---|
-| ① 상황과 내 의도 | |
-| ② 실제 프롬프트 원문 | |
-| ③ AI 결과와 의도의 차이 (증거) | |
-| ④ 내 대응 | |
-| ⑤ 전/후 비교와 배운 점 | |
 
 ---
 
