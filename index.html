@@ -137,7 +137,7 @@ function renderToday() {
   $('nextBed').textContent = fmt(s.bed);
   $('nextWake').textContent = fmt(s.wake);
   $('progress').innerHTML = s.reached
-    ? '🎉 <b>목표 도달</b>'
+    ? '🎉 <b>목표 도달</b> · 유지 단계<br><small>매일 이 시각에 맞춰 자고 일어나세요</small>'
     : s.daysLeft === 1 ? '다음 기상이면 <b>목표 도달</b>' : `목표까지 <b>${s.daysLeft}일</b>`;
 }
 
