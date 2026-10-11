@@ -8,6 +8,7 @@
   :root {
     --bg: #f6f7fb; --card: #ffffff; --text: #1d2233; --muted: #6b7185;
     --accent: #4a5cd6; --err: #d64545; --border: #e2e5ef;
+    --sun: #e8963c; --ring: #e9ecf5;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--text); }
@@ -38,6 +39,21 @@
   .sched .d { font-weight: 600; }
   .sched .t { color: var(--muted); font-size: .85rem; }
   .sched .t b { color: var(--text); font-size: 1rem; font-weight: 600; margin-left: 4px; }
+  .dial { display: block; width: 100%; max-width: 280px; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .dial .track { fill: none; stroke: var(--ring); stroke-width: 22; }
+  .dial .arc { fill: none; stroke: var(--accent); stroke-opacity: .35; stroke-width: 22; }
+  .dial .tick { stroke: var(--muted); stroke-width: 1.5; }
+  .dial .tick.major { stroke-width: 2.5; }
+  .dial .hour { fill: var(--muted); font-size: 12px; text-anchor: middle; dominant-baseline: central; }
+  .dial .handle { cursor: grab; stroke: var(--card); stroke-width: 3; }
+  .dial .handle:focus { outline: none; stroke: var(--text); }
+  .dial .handle.bed { fill: var(--accent); }
+  .dial .handle.wake { fill: var(--sun); }
+  .dial .icon { font-size: 13px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .dial .cl { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+  .dial .cv { fill: var(--text); font-size: 24px; font-weight: 700; text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .dial .cd { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+  .dial-hint { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 4px; }
   .done { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
 </style>
 </head>
@@ -60,21 +76,18 @@
     <form class="card" id="planForm" novalidate>
       <div class="group">
         <h2>현재 패턴</h2>
-        <div class="pair">
-          <div class="field"><label for="curBed">취침</label><input type="time" id="curBed"></div>
-          <div class="field"><label for="curWake">기상</label><input type="time" id="curWake"></div>
-        </div>
+        <input type="hidden" id="curBed"><input type="hidden" id="curWake">
+        <svg class="dial" id="curDial" viewBox="0 0 280 280" role="group" aria-label="현재 패턴 시계"></svg>
         <div class="err" id="curErr"></div>
       </div>
       <div class="group">
         <h2>목표 패턴</h2>
-        <div class="pair">
-          <div class="field"><label for="goalBed">취침</label><input type="time" id="goalBed"></div>
-          <div class="field"><label for="goalWake">기상</label><input type="time" id="goalWake"></div>
-        </div>
+        <input type="hidden" id="goalBed"><input type="hidden" id="goalWake">
+        <svg class="dial" id="goalDial" viewBox="0 0 280 280" role="group" aria-label="목표 패턴 시계"></svg>
         <div class="err" id="goalErr"></div>
       </div>
-      <div class="field">
+      <p class="dial-hint">🌙 취침과 ☀️ 기상 손잡이를 원을 따라 끌어서 맞추세요 (10분 단위)</p>
+      <div class="field" style="margin-top:18px">
         <label for="step">하루 이동 폭</label>
         <div class="inline"><input type="number" id="step" inputmode="numeric" min="1" max="180" step="1"><span>분</span></div>
         <div class="hint">1~180분</div>
@@ -135,6 +148,68 @@ function buildSchedule(plan) {
   return rows;
 }
 
+// ---- 24시간 원형 다이얼: 0시가 위, 시계 방향. 취침·기상 손잡이를 끌어 시각 입력 ----
+const SNAP = 10;  // 분 단위 [가정]
+const SVGNS = 'http://www.w3.org/2000/svg';
+const CX = 140, CY = 140, R = 100;
+const pt = (min, r) => { const a = min / 1440 * 2 * Math.PI; return [CX + r * Math.sin(a), CY - r * Math.cos(a)]; };
+function el(tag, attrs, parent) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const durText = m => `수면 ${Math.floor(m / 60)}시간${m % 60 ? ' ' + (m % 60) + '분' : ''}`;
+
+function makeDial(prefix) {
+  const svg = $(prefix + 'Dial'), inBed = $(prefix + 'Bed'), inWake = $(prefix + 'Wake');
+  el('circle', { class: 'track', cx: CX, cy: CY, r: R }, svg);
+  const arc = el('path', { class: 'arc' }, svg);
+  for (let h = 0; h < 24; h++) {
+    const major = h % 6 === 0, [x1, y1] = pt(h * 60, R - 18), [x2, y2] = pt(h * 60, R - (major ? 28 : 23));
+    el('line', { class: 'tick' + (major ? ' major' : ''), x1, y1, x2, y2 }, svg);
+    if (major) { const [x, y] = pt(h * 60, R + 26); el('text', { class: 'hour', x, y }, svg).textContent = h + '시'; }
+  }
+  const cBedL = el('text', { class: 'cl', x: CX - 40, y: CY - 18 }, svg); cBedL.textContent = '🌙 취침';
+  const cBed = el('text', { class: 'cv', x: CX - 40, y: CY + 10 }, svg);
+  const cWakeL = el('text', { class: 'cl', x: CX + 40, y: CY - 18 }, svg); cWakeL.textContent = '☀️ 기상';
+  const cWake = el('text', { class: 'cv', x: CX + 40, y: CY + 10 }, svg);
+  const cDur = el('text', { class: 'cd', x: CX, y: CY + 36 }, svg);
+  const handles = {};
+  for (const [k, icon, label] of [['bed', '🌙', '취침'], ['wake', '☀️', '기상']]) {
+    const g = el('g', {}, svg);
+    const c = el('circle', { class: 'handle ' + k, r: 16, tabindex: 0, role: 'slider', 'aria-label': label + ' 시각' }, g);
+    const t = el('text', { class: 'icon' }, g); t.textContent = icon;
+    handles[k] = { c, t };
+  }
+  const input = { bed: inBed, wake: inWake };
+  function draw() {
+    const b = toMin(inBed.value || '00:00'), w = toMin(inWake.value || '00:00');
+    const [bx, by] = pt(b, R), [wx, wy] = pt(w, R), d = wrap(w - b);
+    arc.setAttribute('d', d ? `M ${bx} ${by} A ${R} ${R} 0 ${d > 720 ? 1 : 0} 1 ${wx} ${wy}` : '');
+    for (const [k, m] of [['bed', b], ['wake', w]]) {
+      const [x, y] = pt(m, R);
+      handles[k].c.setAttribute('cx', x); handles[k].c.setAttribute('cy', y);
+      handles[k].t.setAttribute('x', x); handles[k].t.setAttribute('y', y);
+      handles[k].c.setAttribute('aria-valuetext', fmt(m));
+    }
+    cBed.textContent = fmt(b); cWake.textContent = fmt(w); cDur.textContent = d ? durText(d) : '';
+  }
+  function setVal(k, m) { input[k].value = fmt(Math.round(wrap(m) / SNAP) * SNAP); draw(); }
+  let active = null;
+  const toMinutes = e => {
+    const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 280 - CX, y = (e.clientY - r.top) / r.height * 280 - CY;
+    return wrap(Math.atan2(x, -y) / (2 * Math.PI) * 1440);
+  };
+  for (const k of ['bed', 'wake']) {
+    handles[k].c.addEventListener('pointerdown', e => { active = k; svg.setPointerCapture(e.pointerId); handles[k].c.focus(); e.preventDefault(); });
+    handles[k].c.addEventListener('keydown', e => {
+      const d = { ArrowRight: SNAP, ArrowUp: SNAP, ArrowLeft: -SNAP, ArrowDown: -SNAP }[e.key];
+      if (d) { setVal(k, toMin(input[k].value) + d); e.preventDefault(); }
+    });
+  }
+  svg.addEventListener('pointermove', e => { if (active) setVal(active, toMinutes(e)); });
+  const end = () => { active = null; };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  return { draw };
+}
+const dials = { cur: makeDial('cur'), goal: makeDial('goal') };
+
 function loadPlan() {
   try { return JSON.parse(localStorage.getItem(PLAN_KEY)); } catch { return null; }
 }
@@ -160,6 +235,7 @@ function showScreen(id) {
 function fillForm(p) {
   ['curBed', 'curWake', 'goalBed', 'goalWake', 'step'].forEach(k => $(k).value = p[k]);
   $('startDate').value = p.startDate || todayISO();
+  dials.cur.draw(); dials.goal.draw();
   clearErrors();
 }
 
