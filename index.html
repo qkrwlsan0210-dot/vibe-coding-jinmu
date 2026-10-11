@@ -34,6 +34,11 @@
   .time.wake .v { color: var(--accent); }
   .progress { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: center; font-size: 1rem; }
   .progress b { font-size: 1.2rem; }
+  .check { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-top: 12px; }
+  .check label { margin-bottom: 8px; }
+  .check .row { display: flex; gap: 8px; }
+  .check .row input { flex: 1; }
+  .check .row .btn { width: auto; margin: 0; padding: 10px 16px; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -48,6 +53,14 @@
       <div class="time wake"><div class="l">다음 기상</div><div class="v" id="nextWake">--:--</div></div>
     </div>
     <div class="progress" id="progress"></div>
+    <form class="check" id="checkForm">
+      <label for="actualWake">실제 기상 시각</label>
+      <div class="row">
+        <input type="time" id="actualWake">
+        <button type="submit" class="btn">일어났어요</button>
+      </div>
+      <div class="err" id="actualErr"></div>
+    </form>
     <button class="link" id="editPlan">플랜 수정</button>
   </section>
 
@@ -118,7 +131,9 @@ function nextSchedule(baseWake, plan) {
 function renderToday() {
   const plan = loadPlan();
   if (!plan) return;
-  const s = nextSchedule(toMin(plan.curWake), plan);  // 기능 3에서 기준을 '마지막 실제 기상 시각'으로 바꿈
+  const last = localStorage.getItem(LAST_KEY);
+  // 규칙: 다음 목표 = 마지막 실제 기상 시각 + 1단계 (기록이 없으면 플랜의 현재 기상 시각)
+  const s = nextSchedule(toMin(last || plan.curWake), plan);
   $('nextBed').textContent = fmt(s.bed);
   $('nextWake').textContent = fmt(s.wake);
   $('progress').innerHTML = s.reached
@@ -126,13 +141,16 @@ function renderToday() {
     : s.daysLeft === 1 ? '다음 기상이면 <b>목표 도달</b>' : `목표까지 <b>${s.daysLeft}일</b>`;
 }
 
+const LAST_KEY = 'lastActualWake';
+const nowHHMM = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+
 function loadPlan() {
   try { return JSON.parse(localStorage.getItem(PLAN_KEY)); } catch { return null; }
 }
 
 function showScreen(id) {
   ['today', 'setup'].forEach(s => $(s).classList.toggle('hidden', s !== id));
-  if (id === 'today') renderToday();
+  if (id === 'today') { renderToday(); $('actualWake').value = nowHHMM(); $('actualErr').textContent = ''; }
   window.scrollTo(0, 0);
 }
 
@@ -186,6 +204,15 @@ $('planForm').onsubmit = e => {
   const plan = readForm();
   if (!plan) { const bad = document.querySelector('input.bad'); if (bad) bad.focus(); return; }
   localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+  localStorage.removeItem(LAST_KEY);  // 새 플랜은 입력한 '현재 기상 시각'부터 시작 [가정]
+  showScreen('today');
+};
+
+$('checkForm').onsubmit = e => {
+  e.preventDefault();
+  const t = $('actualWake').value;
+  if (!t) { $('actualErr').textContent = '기상 시각을 입력해주세요.'; return; }
+  localStorage.setItem(LAST_KEY, t);
   showScreen('today');
 };
 
