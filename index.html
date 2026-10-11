@@ -27,6 +27,13 @@
   .btn { display: block; width: 100%; margin-top: 4px; padding: 14px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font-size: 1.05rem; font-weight: 600; cursor: pointer; }
   .link { background: none; border: none; color: var(--accent); font-size: .95rem; cursor: pointer; padding: 8px 0; }
   .hidden { display: none !important; }
+  .times { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .time { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px; text-align: center; }
+  .time .l { color: var(--muted); font-size: .9rem; font-weight: 600; }
+  .time .v { font-size: 2.2rem; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .time.wake .v { color: var(--accent); }
+  .progress { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: center; font-size: 1rem; }
+  .progress b { font-size: 1.2rem; }
 </style>
 </head>
 <body>
@@ -35,7 +42,12 @@
   <!-- 화면 1: 오늘 (기능 2에서 구현) -->
   <section id="today" class="hidden">
     <h1>오늘</h1>
-    <p class="sub">플랜이 저장되었습니다. (오늘 화면은 기능 2에서 구현)</p>
+    <p class="sub">이 시각에 맞춰 자고 일어나세요.</p>
+    <div class="times">
+      <div class="time"><div class="l">다음 취침</div><div class="v" id="nextBed">--:--</div></div>
+      <div class="time wake"><div class="l">다음 기상</div><div class="v" id="nextWake">--:--</div></div>
+    </div>
+    <div class="progress" id="progress"></div>
     <button class="link" id="editPlan">플랜 수정</button>
   </section>
 
@@ -80,12 +92,47 @@ const PLAN_KEY = 'sleepPlan';
 const DEFAULTS = { curWake: '13:00', goalWake: '08:00', step: 30, sleepMin: 480 };
 const $ = id => document.getElementById(id);
 
+// ---- 시각 계산 (분 단위, 0~1439) ----
+const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const wrap = m => ((m % 1440) + 1440) % 1440;
+const fmt = m => { m = wrap(m); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+
+// 기준 기상 시각(from)에서 목표(goal)까지 짧은 쪽 방향의 차이(분). 정확히 12시간이면 앞당기는 쪽(음수) [가정]
+function shortestDiff(from, goal) {
+  let d = wrap(goal - from);
+  if (d > 720) d -= 1440;
+  if (d === 720) d = -720;
+  return d;
+}
+
+// 기준 기상 시각에서 1단계 이동한 다음 일정
+function nextSchedule(baseWake, plan) {
+  const goal = toMin(plan.goalWake);
+  const d = shortestDiff(baseWake, goal);
+  if (d === 0) return { reached: true, wake: goal, bed: wrap(goal - plan.sleepMin), daysLeft: 0 };
+  const move = Math.sign(d) * Math.min(plan.step, Math.abs(d));
+  const wake = wrap(baseWake + move);
+  return { reached: false, wake, bed: wrap(wake - plan.sleepMin), daysLeft: Math.ceil(Math.abs(d) / plan.step) };
+}
+
+function renderToday() {
+  const plan = loadPlan();
+  if (!plan) return;
+  const s = nextSchedule(toMin(plan.curWake), plan);  // 기능 3에서 기준을 '마지막 실제 기상 시각'으로 바꿈
+  $('nextBed').textContent = fmt(s.bed);
+  $('nextWake').textContent = fmt(s.wake);
+  $('progress').innerHTML = s.reached
+    ? '🎉 <b>목표 도달</b>'
+    : s.daysLeft === 1 ? '다음 기상이면 <b>목표 도달</b>' : `목표까지 <b>${s.daysLeft}일</b>`;
+}
+
 function loadPlan() {
   try { return JSON.parse(localStorage.getItem(PLAN_KEY)); } catch { return null; }
 }
 
 function showScreen(id) {
   ['today', 'setup'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  if (id === 'today') renderToday();
   window.scrollTo(0, 0);
 }
 
