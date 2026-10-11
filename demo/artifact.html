@@ -53,6 +53,19 @@
   .sched .t small { color: var(--muted); font-size: .75rem; margin-left: 2px; }
   .finish { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font-size: .95rem; }
   .finish b { font-size: 1.05rem; }
+  .dirs { display: grid; gap: 10px; margin-top: 18px; }
+  .dirs > h2 { font-size: 1rem; margin: 0; }
+  .opt { display: block; border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; font-weight: 400; color: var(--text); margin: 0; }
+  .opt:has(input:checked) { border-color: var(--accent); }
+  .opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .opt .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .opt .name { font-weight: 700; font-size: 1rem; }
+  .opt .tag { font-size: .75rem; color: var(--accent); font-weight: 600; }
+  .opt .facts { margin: 6px 0 0; padding: 0; list-style: none; font-size: .88rem; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+  .opt .facts b { font-weight: 600; }
+  .opt .warn { color: var(--err); }
+  .opt .pc { margin-top: 8px; font-size: .82rem; color: var(--muted); display: grid; gap: 2px; }
+  .opt:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
   .dial-hint { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 4px; }
   .done { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
 </style>
@@ -97,6 +110,19 @@
         <div class="err" id="daysErr"></div>
         <div class="finish" id="finish"></div>
       </div>
+      <div class="dirs" id="dirs">
+        <h2>이동 방향</h2>
+        <label class="opt"><input type="radio" name="dir" id="dirAdvance" value="advance">
+          <div class="top"><span class="name">앞당기기</span><span class="tag" id="advTag"></span></div>
+          <ul class="facts" id="advFacts"></ul>
+          <div class="pc"><span>장점: 이동 거리가 짧으면 빨리 끝나고, 대체로 밤에 자는 흐름을 유지합니다.</span><span>단점: 몸은 일찍 자는 쪽을 잘 못 따라가서 보통 하루 15~30분 정도가 무리 없는 속도로 알려져 있습니다.</span></div>
+        </label>
+        <label class="opt"><input type="radio" name="dir" id="dirDelay" value="delay">
+          <div class="top"><span class="name">미루기</span><span class="tag" id="delTag"></span></div>
+          <ul class="facts" id="delFacts"></ul>
+          <div class="pc"><span>장점: 생체시계는 하루가 24시간보다 조금 길어 늦추는 쪽을 더 쉽게 따라갑니다. 하루 1~3시간씩 미루는 방법(시간요법)도 쓰입니다.</span><span>단점: 시계를 한 바퀴 돌아야 해서 이동 거리가 길고, 중간에 낮에 자야 하는 날이 생깁니다.</span></div>
+        </label>
+      </div>
       <button type="submit" class="btn">일정 만들기</button>
     </form>
     <button class="link hidden" id="cancelEdit">취소</button>
@@ -137,19 +163,31 @@ const DEFAULTS = { curBed: '06:00', curWake: '15:00', goalBed: '23:00', goalWake
 // 현재 패턴 → 목표 패턴 일정. 적용 기간(N일) 동안 취침·기상을 각각 (차이 ÷ N)씩 옮겨 N번째 날에 목표 도달.
 // k번째 줄(1~N) 날짜 = 적용 날짜 + (k-1) = 그날의 기상 날짜. 취침 > 기상(분)이면 취침은 전날 밤.
 const r5 = m => Math.round(m / 5) * 5;
+// 방향별 이동량(분): 앞당기기는 0 또는 음수, 미루기는 0 또는 양수
+function dirDiff(from, goal, dir) { const d = wrap(goal - from); return d === 0 ? 0 : dir === 'delay' ? d : d - 1440; }
+function moves(plan, dir) { return { bed: dirDiff(toMin(plan.curBed), toMin(plan.goalBed), dir), wake: dirDiff(toMin(plan.curWake), toMin(plan.goalWake), dir) }; }
+// 기본 방향: 취침·기상 이동 거리 합이 더 짧은 쪽
+function shorterDir(plan) { const a = moves(plan, 'advance'), d = moves(plan, 'delay'); return Math.abs(a.bed) + Math.abs(a.wake) <= Math.abs(d.bed) + Math.abs(d.wake) ? 'advance' : 'delay'; }
+const isDaySleep = bed => bed >= 8 * 60 && bed < 18 * 60;  // 08:00~17:59 취침 = 낮에 자는 날 [가정]
 function buildSchedule(plan) {
   const cBed = toMin(plan.curBed), cWake = toMin(plan.curWake);
-  const dBed = shortestDiff(cBed, toMin(plan.goalBed)), dWake = shortestDiff(cWake, toMin(plan.goalWake));
+  const mv = moves(plan, plan.dir || shorterDir(plan)), dBed = mv.bed, dWake = mv.wake;
   if (dBed === 0 && dWake === 0) return [];
   const n = plan.days, start = dayNum(plan.startDate), rows = [];
+  // 기상 시각을 절대 분으로 이어 붙임: 하루마다 24시간 + 그날 이동량. 첫 기상 날짜 = 적용 날짜.
+  // (하루 이동이 크면 기상 날짜가 하루를 건너뛰거나 겹칠 수 있음)
+  const off = k => ({ bed: r5(dBed * k / n), wake: r5(dWake * k / n) });  // 5분 단위 (진무 요청)
+  const base = start * 1440 + wrap(cWake + off(1).wake) - off(1).wake;
   for (let k = 1; k <= n; k++) {
-    // 5분 단위로 반올림 (진무 요청)
-    const bed = wrap(cBed + r5(dBed * k / n)), wake = wrap(cWake + r5(dWake * k / n));
-    rows.push({ day: start + k - 1, bed, wake, prevNight: bed > wake });
+    const o = off(k), bed = wrap(cBed + o.bed), wake = wrap(cWake + o.wake);
+    const wakeAbs = base + (k - 1) * 1440 + o.wake, bedAbs = wakeAbs - wrap(wake - bed);
+    const day = Math.floor(wakeAbs / 1440);
+    rows.push({ day, bed, wake, prevNight: Math.floor(bedAbs / 1440) < day });
   }
   return rows;
 }
-const finishDay = plan => dayNum(plan.startDate) + plan.days - 1;
+// 완료일 = 마지막 기상 날짜
+const finishDay = plan => { const r = buildSchedule(plan); return r.length ? r.at(-1).day : dayNum(plan.startDate); };
 
 // ---- 24시간 원형 다이얼: 0시가 위, 시계 방향. 취침·기상 손잡이를 끌어 시각 입력 ----
 const SNAP = 10;  // 분 단위 [가정]
@@ -223,7 +261,8 @@ function renderSchedule() {
   const rows = buildSchedule(plan);
   $('sched').classList.toggle('hidden', rows.length === 0);
   $('sameMsg').classList.toggle('hidden', rows.length !== 0);
-  $('schedTitle').textContent = rows.length ? `${fmtDay(dayNum(plan.startDate))} ~ ${fmtDay(finishDay(plan))} 완료 (${plan.days}일)` : '일정';
+  $('schedTitle').textContent = rows.length ? `${fmtDay(dayNum(plan.startDate))} ~ ${fmtDay(finishDay(plan))} 완료` : '일정';
+  if (rows.length) $('schedTitle').textContent += ` (${plan.days}일 계획 · ${(plan.dir || shorterDir(plan)) === 'delay' ? '미루기' : '앞당기기'})`;
   $('schedSub').textContent = `${plan.curBed} 취침 · ${plan.curWake} 기상 → ${plan.goalBed} 취침 · ${plan.goalWake} 기상`;
   $('schedList').innerHTML = rows.map(r =>
     `<li><span class="d">${fmtDay(r.day)}</span><span class="t">취침<b>${fmt(r.bed)}</b>${r.prevNight ? '<small>전날</small>' : ''}</span><span class="t">기상<b>${fmt(r.wake)}</b></span></li>`).join('');
@@ -239,6 +278,8 @@ function fillForm(p) {
   ['curBed', 'curWake', 'goalBed', 'goalWake'].forEach(k => $(k).value = p[k]);
   $('days').value = p.days || DEFAULTS.days;
   $('startDate').value = p.startDate || todayISO();
+  const dir = p.dir || shorterDir(p);
+  $('dirAdvance').checked = dir === 'advance'; $('dirDelay').checked = dir === 'delay';
   updateFinish();
   dials.cur.draw(); dials.goal.draw();
   clearErrors();
@@ -269,7 +310,7 @@ function readForm() {
   }
   if (!v('startDate')) { setErr(['startDate'], 'startDateErr', '적용 날짜를 입력해주세요.'); ok = false; }
   if (!ok) return null;
-  return { curBed: v('curBed'), curWake: v('curWake'), goalBed: v('goalBed'), goalWake: v('goalWake'), days, startDate: v('startDate') };
+  return { curBed: v('curBed'), curWake: v('curWake'), goalBed: v('goalBed'), goalWake: v('goalWake'), days, startDate: v('startDate'), dir: $('dirDelay').checked ? 'delay' : 'advance' };
 }
 
 // 적용 날짜·기간을 바꾸면 완료일과 하루 이동 폭을 바로 보여줌
@@ -278,10 +319,32 @@ function updateFinish() {
   if (!sd || !Number.isInteger(d) || d < 1 || d > 365) { $('finish').textContent = '적용 날짜와 기간을 입력하면 완료일이 나옵니다.'; return; }
   const p = { curBed: $('curBed').value, curWake: $('curWake').value, goalBed: $('goalBed').value, goalWake: $('goalWake').value, days: d, startDate: sd };
   const per = m => { const x = Math.abs(m) / d; return x < 1 ? `${Math.round(x * 60)}초` : `${Math.round(x)}분`; };
-  const dB = shortestDiff(toMin(p.curBed), toMin(p.goalBed)), dW = shortestDiff(toMin(p.curWake), toMin(p.goalWake));
-  $('finish').innerHTML = `완료일 <b>${fmtDay(finishDay(p))}</b><br><small>하루에 취침 ${per(dB)}, 기상 ${per(dW)}씩 이동</small>`;
+  const dir = $('dirDelay').checked ? 'delay' : 'advance', mv = moves(p, dir);
+  p.dir = dir;
+  $('finish').innerHTML = `완료일 <b>${fmtDay(finishDay(p))}</b><br><small>하루에 취침 ${per(mv.bed)}, 기상 ${per(mv.wake)}씩 ${dir === 'delay' ? '미룸' : '앞당김'}</small>`;
+  renderDirs(p);
 }
-['days', 'startDate'].forEach(id => $(id).addEventListener('input', updateFinish));
+
+// 두 방향을 같은 기간 기준으로 비교해 보여줌
+const hm = m => { m = Math.abs(m); return `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}`; };
+function renderDirs(p) {
+  const same = toMin(p.curBed) === toMin(p.goalBed) && toMin(p.curWake) === toMin(p.goalWake);
+  $('dirs').classList.toggle('hidden', same);
+  if (same) return;
+  const short = shorterDir(p);
+  for (const [dir, key, limit, limitText] of [['advance', 'adv', 30, '하루 30분'], ['delay', 'del', 180, '하루 3시간']]) {
+    const mv = moves(p, dir), perB = Math.abs(mv.bed) / p.days, perW = Math.abs(mv.wake) / p.days;
+    const rows = buildSchedule({ ...p, dir }), daySleep = rows.filter(r => isDaySleep(r.bed)).length;
+    const fast = Math.max(perB, perW) > limit;
+    $(key + 'Tag').textContent = dir === short ? '이동 거리가 더 짧음' : '';
+    $(key + 'Facts').innerHTML =
+      `<li>총 이동: 취침 <b>${hm(mv.bed)}</b> · 기상 <b>${hm(mv.wake)}</b></li>` +
+      `<li class="${fast ? 'warn' : ''}">하루 이동: 취침 <b>${Math.round(perB)}분</b> · 기상 <b>${Math.round(perW)}분</b>${fast ? ` (${limitText}보다 빠름)` : ''}</li>` +
+      `<li>낮(08~18시)에 자는 날: <b>${daySleep}일</b></li>` +
+      `<li>완료일: <b>${rows.length ? fmtDay(rows.at(-1).day) : '-'}</b></li>`;
+  }
+}
+['days', 'startDate', 'dirAdvance', 'dirDelay'].forEach(id => { $(id).addEventListener('input', updateFinish); $(id).addEventListener('change', updateFinish); });
 
 $('planForm').onsubmit = e => {
   e.preventDefault();
