@@ -53,6 +53,9 @@
   .dial .cl { fill: var(--muted); font-size: 12px; text-anchor: middle; }
   .dial .cv { fill: var(--text); font-size: 24px; font-weight: 700; text-anchor: middle; font-variant-numeric: tabular-nums; }
   .dial .cd { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+  .sched .t small { color: var(--muted); font-size: .75rem; margin-left: 2px; }
+  .finish { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font-size: .95rem; }
+  .finish b { font-size: 1.05rem; }
   .dial-hint { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 4px; }
   .done { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
 </style>
@@ -88,15 +91,16 @@
       </div>
       <p class="dial-hint">🌙 취침과 ☀️ 기상 손잡이를 원을 따라 끌어서 맞추세요 (10분 단위)</p>
       <div class="field" style="margin-top:18px">
-        <label for="step">하루 이동 폭</label>
-        <div class="inline"><input type="number" id="step" inputmode="numeric" min="1" max="180" step="1"><span>분</span></div>
-        <div class="hint">1~180분</div>
-        <div class="err" id="stepErr"></div>
-      </div>
-      <div class="field">
         <label for="startDate">적용 날짜</label>
         <input type="date" id="startDate">
         <div class="err" id="startDateErr"></div>
+      </div>
+      <div class="field">
+        <label for="days">적용 기간</label>
+        <div class="inline"><input type="number" id="days" inputmode="numeric" min="1" max="365" step="1"><span>일</span></div>
+        <div class="hint">1~365일</div>
+        <div class="err" id="daysErr"></div>
+        <div class="finish" id="finish"></div>
       </div>
       <button type="submit" class="btn">일정 만들기</button>
     </form>
@@ -105,7 +109,7 @@
 
 </main>
 <script>
-const PLAN_KEY = 'sleepPlanV2';
+const PLAN_KEY = 'sleepPlanV3';
 const $ = id => document.getElementById(id);
 
 // ---- 시각 (분 단위, 0~1439) ----
@@ -121,7 +125,7 @@ function shortestDiff(from, goal) {
   if (d === 720) d = -720;
   return d;
 }
-const stepToward = (from, goal, step) => { const d = shortestDiff(from, goal); return Math.sign(d) * Math.min(step, Math.abs(d)); };
+
 
 // ---- 날짜 (로컬 기준, 일 번호로 계산) ----
 const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
@@ -129,24 +133,22 @@ const dayNum = iso => { const [y, m, d] = iso.split('-').map(Number); return Mat
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const fmtDay = n => { const d = new Date(n * 864e5); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}(${DOW[d.getUTCDay()]})`; };
 
-const DEFAULTS = { curBed: '06:00', curWake: '15:00', goalBed: '23:00', goalWake: '09:00', step: 30 };
+const DEFAULTS = { curBed: '06:00', curWake: '15:00', goalBed: '23:00', goalWake: '09:00', days: 14 };
 
-// 현재 패턴 → 목표 패턴 일정. 취침·기상을 각각 하루에 이동 폭만큼 목표 쪽으로 옮김.
-// 첫 줄 = 적용 날짜(1단계 이동한 값), 줄 날짜 = 취침 날짜. 취침은 절대 분으로 누적해 자정 넘김 처리.
+// 현재 패턴 → 목표 패턴 일정. 적용 기간(N일) 동안 취침·기상을 각각 (차이 ÷ N)씩 옮겨 N번째 날에 목표 도달.
+// k번째 줄(1~N) 날짜 = 적용 날짜 + (k-1) = 그날의 기상 날짜. 취침 > 기상(분)이면 취침은 전날 밤.
 function buildSchedule(plan) {
-  const gBed = toMin(plan.goalBed), gWake = toMin(plan.goalWake);
-  let bed = toMin(plan.curBed), wake = toMin(plan.curWake);
-  let bedAbs = null;
-  const rows = [];
-  for (let i = 0; i < 2000; i++) {
-    const mBed = stepToward(bed, gBed, plan.step), mWake = stepToward(wake, gWake, plan.step);
-    if (mBed === 0 && mWake === 0) break;
-    bed = wrap(bed + mBed); wake = wrap(wake + mWake);
-    bedAbs = bedAbs === null ? dayNum(plan.startDate) * 1440 + bed : bedAbs + 1440 + mBed;
-    rows.push({ day: Math.floor(bedAbs / 1440), bed, wake });
+  const cBed = toMin(plan.curBed), cWake = toMin(plan.curWake);
+  const dBed = shortestDiff(cBed, toMin(plan.goalBed)), dWake = shortestDiff(cWake, toMin(plan.goalWake));
+  if (dBed === 0 && dWake === 0) return [];
+  const n = plan.days, start = dayNum(plan.startDate), rows = [];
+  for (let k = 1; k <= n; k++) {
+    const bed = wrap(cBed + Math.round(dBed * k / n)), wake = wrap(cWake + Math.round(dWake * k / n));
+    rows.push({ day: start + k - 1, bed, wake, prevNight: bed > wake });
   }
   return rows;
 }
+const finishDay = plan => dayNum(plan.startDate) + plan.days - 1;
 
 // ---- 24시간 원형 다이얼: 0시가 위, 시계 방향. 취침·기상 손잡이를 끌어 시각 입력 ----
 const SNAP = 10;  // 분 단위 [가정]
@@ -190,7 +192,7 @@ function makeDial(prefix) {
     }
     cBed.textContent = fmt(b); cWake.textContent = fmt(w); cDur.textContent = d ? durText(d) : '';
   }
-  function setVal(k, m) { input[k].value = fmt(Math.round(wrap(m) / SNAP) * SNAP); draw(); }
+  function setVal(k, m) { input[k].value = fmt(Math.round(wrap(m) / SNAP) * SNAP); draw(); if (typeof updateFinish === 'function') updateFinish(); }
   let active = null;
   const toMinutes = e => {
     const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 280 - CX, y = (e.clientY - r.top) / r.height * 280 - CY;
@@ -220,10 +222,10 @@ function renderSchedule() {
   const rows = buildSchedule(plan);
   $('sched').classList.toggle('hidden', rows.length === 0);
   $('sameMsg').classList.toggle('hidden', rows.length !== 0);
-  $('schedTitle').textContent = rows.length ? `${fmtDay(dayNum(plan.startDate))}부터 ${rows.length}일 일정` : '일정';
+  $('schedTitle').textContent = rows.length ? `${fmtDay(dayNum(plan.startDate))} ~ ${fmtDay(finishDay(plan))} 완료 (${plan.days}일)` : '일정';
   $('schedSub').textContent = `${plan.curBed} 취침 · ${plan.curWake} 기상 → ${plan.goalBed} 취침 · ${plan.goalWake} 기상`;
   $('schedList').innerHTML = rows.map(r =>
-    `<li><span class="d">${fmtDay(r.day)}</span><span class="t">취침<b>${fmt(r.bed)}</b></span><span class="t">기상<b>${fmt(r.wake)}</b></span></li>`).join('');
+    `<li><span class="d">${fmtDay(r.day)}</span><span class="t">취침<b>${fmt(r.bed)}</b>${r.prevNight ? '<small>전날</small>' : ''}</span><span class="t">기상<b>${fmt(r.wake)}</b></span></li>`).join('');
 }
 
 function showScreen(id) {
@@ -233,8 +235,10 @@ function showScreen(id) {
 }
 
 function fillForm(p) {
-  ['curBed', 'curWake', 'goalBed', 'goalWake', 'step'].forEach(k => $(k).value = p[k]);
+  ['curBed', 'curWake', 'goalBed', 'goalWake'].forEach(k => $(k).value = p[k]);
+  $('days').value = p.days || DEFAULTS.days;
   $('startDate').value = p.startDate || todayISO();
+  updateFinish();
   dials.cur.draw(); dials.goal.draw();
   clearErrors();
 }
@@ -258,14 +262,25 @@ function readForm() {
     if (!v(b) || !v(w)) { setErr([b, w].filter(i => !v(i)), err, `${name} 패턴의 취침·기상 시각을 모두 입력해주세요.`); ok = false; }
     else if (v(b) === v(w)) { setErr([b, w], err, `${name} 패턴의 취침과 기상 시각이 같습니다.`); ok = false; }
   }
-  const stepRaw = v('step').trim(), step = Number(stepRaw);
-  if (stepRaw === '' || !Number.isInteger(step) || step < 1 || step > 180) {
-    setErr(['step'], 'stepErr', '하루 이동 폭은 1~180 사이의 정수(분)로 입력해주세요.'); ok = false;
+  const daysRaw = v('days').trim(), days = Number(daysRaw);
+  if (daysRaw === '' || !Number.isInteger(days) || days < 1 || days > 365) {
+    setErr(['days'], 'daysErr', '적용 기간은 1~365 사이의 정수(일)로 입력해주세요.'); ok = false;
   }
   if (!v('startDate')) { setErr(['startDate'], 'startDateErr', '적용 날짜를 입력해주세요.'); ok = false; }
   if (!ok) return null;
-  return { curBed: v('curBed'), curWake: v('curWake'), goalBed: v('goalBed'), goalWake: v('goalWake'), step, startDate: v('startDate') };
+  return { curBed: v('curBed'), curWake: v('curWake'), goalBed: v('goalBed'), goalWake: v('goalWake'), days, startDate: v('startDate') };
 }
+
+// 적용 날짜·기간을 바꾸면 완료일과 하루 이동 폭을 바로 보여줌
+function updateFinish() {
+  const d = Number($('days').value), sd = $('startDate').value;
+  if (!sd || !Number.isInteger(d) || d < 1 || d > 365) { $('finish').textContent = '적용 날짜와 기간을 입력하면 완료일이 나옵니다.'; return; }
+  const p = { curBed: $('curBed').value, curWake: $('curWake').value, goalBed: $('goalBed').value, goalWake: $('goalWake').value, days: d, startDate: sd };
+  const per = m => { const x = Math.abs(m) / d; return x < 1 ? `${Math.round(x * 60)}초` : `${Math.round(x)}분`; };
+  const dB = shortestDiff(toMin(p.curBed), toMin(p.goalBed)), dW = shortestDiff(toMin(p.curWake), toMin(p.goalWake));
+  $('finish').innerHTML = `완료일 <b>${fmtDay(finishDay(p))}</b><br><small>하루에 취침 ${per(dB)}, 기상 ${per(dW)}씩 이동</small>`;
+}
+['days', 'startDate'].forEach(id => $(id).addEventListener('input', updateFinish));
 
 $('planForm').onsubmit = e => {
   e.preventDefault();
