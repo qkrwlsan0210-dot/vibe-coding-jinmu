@@ -3,405 +3,156 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>수면 패턴 관리</title>
+<title>수면 리듬 회복</title>
 <style>
   :root {
-    --bg: #0f1226; --card: #1a1f3d; --text: #e8eaf6; --muted: #9aa0c3;
-    --accent: #7c8cff; --good: #4caf8f; --bad: #e57373; --border: #2a3060;
+    --bg: #f6f7fb; --card: #ffffff; --text: #1d2233; --muted: #6b7185;
+    --accent: #4a5cd6; --err: #d64545; --border: #e2e5ef;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, "Pretendard", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--text); }
-  header { padding: 20px 16px 8px; text-align: center; }
-  header h1 { margin: 0; font-size: 1.5rem; }
-  header p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
-  nav { display: flex; justify-content: center; gap: 8px; padding: 12px; }
-  nav button { background: var(--card); color: var(--muted); border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: .95rem; }
-  nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-  main { max-width: 640px; margin: 0 auto; padding: 0 16px 40px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  .card h2 { margin: 0 0 12px; font-size: 1.1rem; }
-  label { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 4px; }
-  input, select, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 1rem; }
-  .row { display: flex; gap: 12px; } .row > div { flex: 1; }
-  .btn { width: 100%; margin-top: 16px; padding: 12px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 1rem; cursor: pointer; }
-  .stars { display: flex; gap: 6px; } .stars span { font-size: 1.6rem; cursor: pointer; color: #444a7a; } .stars span.on { color: #ffd166; }
-  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .stat { background: var(--bg); border-radius: 8px; padding: 12px; text-align: center; }
-  .stat .v { font-size: 1.4rem; font-weight: bold; } .stat .l { font-size: .8rem; color: var(--muted); }
-  .entry { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  .entry:last-child { border-bottom: none; }
-  .entry .d { font-weight: bold; } .entry .s { color: var(--muted); font-size: .85rem; }
-  .entry button { background: none; border: none; color: var(--bad); cursor: pointer; font-size: 1rem; }
-  .tip { padding: 10px; border-left: 3px solid var(--accent); background: var(--bg); margin-bottom: 8px; border-radius: 4px; font-size: .9rem; }
-  canvas { width: 100%; height: 220px; }
-  .hidden { display: none; }
-  .quick { display: flex; gap: 10px; } .quick .btn { margin-top: 0; }
-  .quick .btn.night { background: #3b3f8f; } .quick .btn.day { background: #e0a43a; }
-  .pending { margin-top: 10px; font-size: .9rem; color: #ffd166; text-align: center; }
-  .seg { display: flex; gap: 6px; margin-bottom: 12px; }
-  .seg button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; }
-  .seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-  #timeline { height: 260px; }
-  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: opacity .25s; pointer-events: none; }
-  .toast.show { opacity: 1; }
-  .btn.sub { background: var(--bg); border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
-  .entry .acts button { margin-left: 6px; color: var(--muted); }
-  .entry .acts button.del { color: var(--bad); }
-  .editing { color: #ffd166; font-size: .85rem; margin-top: 8px; }
-  .empty { color: var(--muted); text-align: center; padding: 20px; }
+  body { margin: 0; font-family: -apple-system, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 420px; margin: 0 auto; padding: 24px 16px 40px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: .9rem; margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+  .field { margin-bottom: 18px; }
+  label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
+  .hint { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  input { font-size: 1.05rem; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); width: 100%; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  input.bad { border-color: var(--err); }
+  .inline { display: flex; align-items: center; gap: 8px; }
+  .inline input { width: 90px; }
+  .err { color: var(--err); font-size: .85rem; margin-top: 4px; }
+  .btn { display: block; width: 100%; margin-top: 4px; padding: 14px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font-size: 1.05rem; font-weight: 600; cursor: pointer; }
+  .link { background: none; border: none; color: var(--accent); font-size: .95rem; cursor: pointer; padding: 8px 0; }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
-<header>
-  <h1>🌙 수면 패턴 관리</h1>
-  <p>매일의 수면을 기록하고 패턴을 확인하세요</p>
-</header>
-<nav>
-  <button data-tab="record" class="active">기록</button>
-  <button data-tab="stats">통계</button>
-  <button data-tab="history">기록 목록</button>
-</nav>
 <main>
-  <section id="record">
-    <div class="card">
-      <h2>빠른 기록</h2>
-      <div class="quick">
-        <button class="btn night" id="sleepNow">🛌 지금 잘게요</button>
-        <button class="btn day" id="wakeNow">☀️ 일어났어요</button>
-      </div>
-      <div class="pending hidden" id="pending"></div>
-    </div>
-    <div class="card">
-      <h2>오늘의 수면 기록</h2>
-      <label>날짜 (일어난 날)</label>
-      <input type="date" id="date">
-      <div class="row">
-        <div><label>취침 시각</label><input type="time" id="bed" value="23:30"></div>
-        <div><label>기상 시각</label><input type="time" id="wake" value="07:00"></div>
-      </div>
-      <label>수면 질</label>
-      <div class="stars" id="stars"></div>
-      <label>메모 (선택)</label>
-      <textarea id="memo" rows="2" placeholder="예: 카페인 늦게 마심, 자주 깸"></textarea>
-      <div class="editing hidden" id="editing">✏️ 기존 기록을 수정 중입니다</div>
-      <button class="btn" id="save">저장하기</button>
-      <button class="btn sub hidden" id="cancelEdit">수정 취소</button>
-    </div>
+
+  <!-- 화면 1: 오늘 (기능 2에서 구현) -->
+  <section id="today" class="hidden">
+    <h1>오늘</h1>
+    <p class="sub">플랜이 저장되었습니다. (오늘 화면은 기능 2에서 구현)</p>
+    <button class="link" id="editPlan">플랜 수정</button>
   </section>
 
-  <section id="stats" class="hidden">
-    <div class="card">
-      <h2>나의 수면 목표</h2>
-      <div class="row">
-        <div><label>목표 수면 시간</label><input type="number" id="goalHrs" min="4" max="12" step="0.5"></div>
-        <div><label>목표 취침 시각</label><input type="time" id="goalBed"></div>
+  <!-- 화면 2: 플랜 설정 -->
+  <section id="setup" class="hidden">
+    <h1>회복 플랜 설정</h1>
+    <p class="sub">지금 일어나는 시각에서 목표 시각까지 하루씩 조금씩 옮겨 갑니다.</p>
+    <form class="card" id="planForm" novalidate>
+      <div class="field">
+        <label for="curWake">현재 평소 기상 시각</label>
+        <input type="time" id="curWake">
+        <div class="err" id="curWakeErr"></div>
       </div>
-      <button class="btn sub" id="saveGoal">목표 저장</button>
-      <div id="goalRate" class="s" style="margin-top:10px;color:var(--muted)"></div>
-    </div>
-    <div class="seg" id="periodSeg">
-      <button data-p="7" class="on">최근 7일</button>
-      <button data-p="30">최근 30일</button>
-    </div>
-    <div class="card">
-      <h2 id="sumTitle">최근 7일 요약</h2>
-      <div class="stats">
-        <div class="stat"><div class="v" id="avgDur">-</div><div class="l">평균 수면 시간</div></div>
-        <div class="stat"><div class="v" id="avgQ">-</div><div class="l">평균 수면 질</div></div>
-        <div class="stat"><div class="v" id="avgBed">-</div><div class="l">평균 취침 시각</div></div>
-        <div class="stat"><div class="v" id="avgWake">-</div><div class="l">평균 기상 시각</div></div>
-        <div class="stat"><div class="v" id="debt">-</div><div class="l">누적 수면 부채</div></div>
-        <div class="stat"><div class="v" id="jetlag">-</div><div class="l">주말 시차 (사회적 시차)</div></div>
+      <div class="field">
+        <label for="goalWake">목표 기상 시각</label>
+        <input type="time" id="goalWake">
+        <div class="err" id="goalWakeErr"></div>
       </div>
-    </div>
-    <div class="card">
-      <h2>수면 시간 추이</h2>
-      <canvas id="chart"></canvas>
-    </div>
-    <div class="card">
-      <h2>수면 시간대</h2>
-      <canvas id="timeline"></canvas>
-    </div>
-    <div class="card">
-      <h2>수면 조언</h2>
-      <div id="tips"></div>
-    </div>
+      <div class="field">
+        <label for="step">하루 이동 폭</label>
+        <div class="inline"><input type="number" id="step" inputmode="numeric" min="1" max="180" step="1"><span>분</span></div>
+        <div class="hint">1~180분</div>
+        <div class="err" id="stepErr"></div>
+      </div>
+      <div class="field">
+        <label for="sleepH">수면 시간</label>
+        <div class="inline">
+          <input type="number" id="sleepH" inputmode="numeric" min="3" max="14" step="1"><span>시간</span>
+          <input type="number" id="sleepM" inputmode="numeric" min="0" max="59" step="1"><span>분</span>
+        </div>
+        <div class="hint">3~14시간</div>
+        <div class="err" id="sleepErr"></div>
+      </div>
+      <button type="submit" class="btn">플랜 저장</button>
+    </form>
+    <button class="link hidden" id="cancelEdit">취소</button>
   </section>
 
-  <section id="history" class="hidden">
-    <div class="card">
-      <h2>전체 기록</h2>
-      <div id="list"></div>
-    </div>
-    <div class="card">
-      <h2>백업</h2>
-      <button class="btn sub" id="exportBtn">📤 기록 내보내기 (JSON)</button>
-      <button class="btn sub" id="importBtn">📥 기록 가져오기</button>
-      <input type="file" id="importFile" accept=".json,application/json" class="hidden">
-    </div>
-  </section>
 </main>
-<div class="toast" id="toast"></div>
-
 <script>
-const KEY = 'sleepRecords';
-let records = JSON.parse(localStorage.getItem(KEY) || '[]');
-let quality = 3;
-let editingDate = null;
-const GKEY = 'sleepGoal';
-let goal = JSON.parse(localStorage.getItem(GKEY) || '{"hrs":8,"bed":"23:30"}');
-const PKEY = 'sleepPending';
-let period = 7;
-
+const PLAN_KEY = 'sleepPlan';
+const DEFAULTS = { curWake: '13:00', goalWake: '08:00', step: 30, sleepMin: 480 };
 const $ = id => document.getElementById(id);
-const save = () => localStorage.setItem(KEY, JSON.stringify(records));
-const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-const fmtMin = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
-const fmtDur = m => `${Math.floor(m / 60)}시간 ${Math.round(m % 60)}분`;
-function duration(bed, wake) { let d = toMin(wake) - toMin(bed); if (d <= 0) d += 1440; return d; }
 
-// 로컬 날짜 기준 (toISOString은 UTC라 한국 오전 9시 이전엔 전날로 나옴)
-function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
-$('date').value = today();
-const hhmm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-function renderPending() {
-  const p = localStorage.getItem(PKEY);
-  $('pending').classList.toggle('hidden', !p);
-  if (p) $('pending').textContent = `💤 ${hhmm(new Date(p))}부터 수면 중… 일어나면 '일어났어요'를 눌러주세요`;
+function loadPlan() {
+  try { return JSON.parse(localStorage.getItem(PLAN_KEY)); } catch { return null; }
 }
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1800); }
 
-function renderStars() {
-  $('stars').innerHTML = '';
-  for (let i = 1; i <= 5; i++) {
-    const s = document.createElement('span');
-    s.textContent = '★'; s.className = i <= quality ? 'on' : '';
-    s.onclick = () => { quality = i; renderStars(); };
-    $('stars').appendChild(s);
+function showScreen(id) {
+  ['today', 'setup'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  window.scrollTo(0, 0);
+}
+
+function fillForm(p) {
+  $('curWake').value = p.curWake;
+  $('goalWake').value = p.goalWake;
+  $('step').value = p.step;
+  $('sleepH').value = Math.floor(p.sleepMin / 60);
+  $('sleepM').value = p.sleepMin % 60;
+  clearErrors();
+}
+
+function clearErrors() {
+  document.querySelectorAll('.err').forEach(e => e.textContent = '');
+  document.querySelectorAll('input.bad').forEach(i => i.classList.remove('bad'));
+}
+
+function setErr(inputIds, errId, msg) {
+  inputIds.forEach(i => $(i).classList.add('bad'));
+  $(errId).textContent = msg;
+}
+
+// 입력 검증: 문제가 없으면 플랜 객체, 있으면 null
+function readForm() {
+  clearErrors();
+  let ok = true;
+  const curWake = $('curWake').value, goalWake = $('goalWake').value;
+  if (!curWake) { setErr(['curWake'], 'curWakeErr', '현재 기상 시각을 입력해주세요.'); ok = false; }
+  if (!goalWake) { setErr(['goalWake'], 'goalWakeErr', '목표 기상 시각을 입력해주세요.'); ok = false; }
+
+  const stepRaw = $('step').value.trim();
+  const step = Number(stepRaw);
+  if (stepRaw === '' || !Number.isInteger(step) || step < 1 || step > 180) {
+    setErr(['step'], 'stepErr', '하루 이동 폭은 1~180 사이의 정수(분)로 입력해주세요.'); ok = false;
   }
-}
 
-$('save').onclick = () => {
-  const r = { date: $('date').value, bed: $('bed').value, wake: $('wake').value, quality, memo: $('memo').value.trim() };
-  if (!r.date || !r.bed || !r.wake) return alert('날짜와 시각을 입력해주세요.');
-  const exists = records.some(x => x.date === r.date && x.date !== editingDate);
-  if (exists && !confirm(`${r.date} 기록이 이미 있습니다. 덮어쓸까요?`)) return;
-  records = records.filter(x => x.date !== r.date && x.date !== editingDate);
-  records.push(r);
-  records.sort((a, b) => b.date.localeCompare(a.date));
-  save();
-  toast(editingDate ? '수정되었습니다' : '저장되었습니다');
-  resetForm();
-  render();
-};
-
-function resetForm() {
-  editingDate = null;
-  $('date').value = today(); $('bed').value = '23:30'; $('wake').value = '07:00'; $('memo').value = '';
-  quality = 3; renderStars();
-  $('editing').classList.add('hidden'); $('cancelEdit').classList.add('hidden');
-}
-$('cancelEdit').onclick = resetForm;
-
-$('sleepNow').onclick = () => {
-  localStorage.setItem(PKEY, new Date().toISOString());
-  renderPending(); toast('잘 자요 🌙');
-};
-$('wakeNow').onclick = () => {
-  const p = localStorage.getItem(PKEY);
-  if (!p) return toast("먼저 '지금 잘게요'를 눌러주세요");
-  const bed = new Date(p), now = new Date();
-  if (now - bed < 30 * 60000) { localStorage.removeItem(PKEY); renderPending(); return toast('30분 미만이라 기록하지 않았어요'); }
-  resetForm();
-  $('date').value = today(); $('bed').value = hhmm(bed); $('wake').value = hhmm(now);
-  localStorage.removeItem(PKEY); renderPending();
-  toast('좋은 아침이에요! 수면 질을 고르고 저장하세요');
-};
-
-function startEdit(r) {
-  editingDate = r.date;
-  $('date').value = r.date; $('bed').value = r.bed; $('wake').value = r.wake; $('memo').value = r.memo || '';
-  quality = r.quality; renderStars();
-  $('editing').classList.remove('hidden'); $('cancelEdit').classList.remove('hidden');
-  showTab('record');
-}
-
-// 자정을 넘나드는 시각의 평균: 18시 이전은 +24h 처리
-function avgTime(times, shiftBefore) {
-  const ms = times.map(t => { let m = toMin(t); if (shiftBefore && m < 18 * 60) m += 1440; return m; });
-  return ms.reduce((a, b) => a + b, 0) / ms.length;
-}
-
-function renderStats() {
-  $('sumTitle').textContent = `최근 ${period}일 요약`;
-  const from = new Date(today()); from.setDate(from.getDate() - (period - 1));
-  const fromStr = from.toISOString().slice(0, 10);
-  const recent = records.filter(r => r.date >= fromStr);
-  $('goalHrs').value = goal.hrs; $('goalBed').value = goal.bed;
-  if (!recent.length) {
-    ['avgDur', 'avgQ', 'avgBed', 'avgWake', 'debt', 'jetlag'].forEach(id => $(id).textContent = '-');
-    drawTimeline([]);
-    $('tips').innerHTML = '<div class="empty">기록이 쌓이면 조언을 보여드려요.</div>';
-    $('goalRate').textContent = '';
-    drawChart([]);
-    return;
+  const hRaw = $('sleepH').value.trim(), mRaw = $('sleepM').value.trim();
+  const h = Number(hRaw), m = mRaw === '' ? 0 : Number(mRaw);
+  if (hRaw === '' || !Number.isInteger(h) || !Number.isInteger(m) || m < 0 || m > 59) {
+    setErr(['sleepH', 'sleepM'], 'sleepErr', '수면 시간은 시간(정수)과 분(0~59)으로 입력해주세요.'); ok = false;
+  } else if (h * 60 + m < 180 || h * 60 + m > 840) {
+    setErr(['sleepH', 'sleepM'], 'sleepErr', '수면 시간은 3~14시간 사이로 입력해주세요.'); ok = false;
   }
-  const durs = recent.map(r => duration(r.bed, r.wake));
-  const avgD = durs.reduce((a, b) => a + b, 0) / durs.length;
-  $('avgDur').textContent = fmtDur(avgD);
-  $('avgQ').textContent = (recent.reduce((a, r) => a + r.quality, 0) / recent.length).toFixed(1) + ' / 5';
-  $('avgBed').textContent = fmtMin(avgTime(recent.map(r => r.bed), true));
-  $('avgWake').textContent = fmtMin(avgTime(recent.map(r => r.wake), false));
 
-  const debt = durs.reduce((a, d) => a + Math.max(0, goal.hrs * 60 - d), 0);
-  $('debt').textContent = debt ? fmtDur(debt) : '없음';
-  // 사회적 시차: 주말(토·일 기상) vs 평일 수면 중간 시각 차이
-  const mid = r => { let b = toMin(r.bed); if (b < 1080) b += 1440; return b + duration(r.bed, r.wake) / 2; };
-  const isWkd = r => { const d = new Date(r.date + 'T12:00'); return d.getDay() === 0 || d.getDay() === 6; };
-  const wkd = recent.filter(isWkd), wk = recent.filter(r => !isWkd(r));
-  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
-  let jet = null;
-  if (wkd.length && wk.length) { jet = avg(wkd.map(mid)) - avg(wk.map(mid)); $('jetlag').textContent = (jet >= 0 ? '+' : '-') + fmtDur(Math.abs(jet)); }
-  else $('jetlag').textContent = '-';
-
-  const okDays = durs.filter(d => d >= goal.hrs * 60 - 15).length;
-  $('goalRate').textContent = `최근 ${period}일 중 ${okDays}일 목표 수면 시간 달성 (${recent.length}일 기록)`;
-  const tips = [];
-  if (jet !== null && Math.abs(jet) >= 60) tips.push(`주말 수면 시간대가 평일과 ${fmtDur(Math.abs(jet))} 차이 납니다. 주말에도 기상 시각을 1시간 이내로 유지하면 월요일 피로가 줄어요.`);
-  if (debt >= 300) tips.push(`이번 기간 수면 부채가 ${fmtDur(debt)} 쌓였어요. 한 번에 몰아 자기보다 며칠에 걸쳐 30분씩 일찍 자는 게 좋아요.`);
-  if (avgD < goal.hrs * 60 - 30) tips.push(`목표(${goal.hrs}시간)보다 평균 ${fmtDur(goal.hrs * 60 - avgD)} 덜 자고 있어요.`);
-  const goalBedM = (m => m < 1080 ? m + 1440 : m)(toMin(goal.bed));
-  const lateBy = avgTime(recent.map(r => r.bed), true) - goalBedM;
-  if (lateBy > 30) tips.push(`평균 취침이 목표(${goal.bed})보다 ${fmtDur(lateBy)} 늦습니다. 15분씩 앞당겨 보세요.`);
-  if (avgD < 420) tips.push('평균 수면이 7시간 미만입니다. 성인 권장 수면 시간은 7~9시간이에요.');
-  else if (avgD > 540) tips.push('평균 수면이 9시간을 넘습니다. 과다 수면도 피로의 원인이 될 수 있어요.');
-  else tips.push('수면 시간이 권장 범위(7~9시간) 안에 있어요. 좋습니다!');
-  const beds = recent.map(r => { let m = toMin(r.bed); if (m < 1080) m += 1440; return m; });
-  const spread = Math.max(...beds) - Math.min(...beds);
-  if (spread > 90) tips.push(`취침 시각 편차가 ${fmtDur(spread)}입니다. 매일 비슷한 시간에 자는 것이 수면 질을 높여요.`);
-  if (avgTime(recent.map(r => r.bed), true) > 25 * 60) tips.push('평균 취침 시각이 새벽 1시 이후입니다. 조금씩 앞당겨 보세요.');
-  $('tips').innerHTML = tips.map(t => `<div class="tip">${t}</div>`).join('');
-  drawChart(recent.slice(0, 14).reverse());
-  drawTimeline(recent.slice(0, 14).reverse());
+  if (!ok) return null;
+  return { curWake, goalWake, step, sleepMin: h * 60 + m, createdAt: new Date().toISOString() };
 }
 
-function drawChart(data) {
-  const c = $('chart'), dpr = window.devicePixelRatio || 1;
-  const w = c.clientWidth, h = c.clientHeight;
-  c.width = w * dpr; c.height = h * dpr;
-  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, w, h);
-  if (!data.length) { ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'center'; ctx.fillText('데이터가 없습니다', w / 2, h / 2); return; }
-  const pad = 30, maxH = 12, bw = (w - pad * 2) / data.length;
-  ctx.strokeStyle = '#4caf8f'; ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = '#ffd166'; { const y = h - pad - (goal.hrs / maxH) * (h - pad * 2); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke(); }
-  ctx.strokeStyle = '#4caf8f'; ctx.setLineDash([4, 4]);
-  [7, 9].forEach(v => { const y = h - pad - (v / maxH) * (h - pad * 2); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke(); });
-  ctx.setLineDash([]);
-  data.forEach((r, i) => {
-    const hrs = duration(r.bed, r.wake) / 60;
-    const bh = (Math.min(hrs, maxH) / maxH) * (h - pad * 2);
-    const x = pad + i * bw + bw * 0.2;
-    ctx.fillStyle = hrs >= 7 && hrs <= 9 ? '#7c8cff' : '#e57373';
-    ctx.fillRect(x, h - pad - bh, bw * 0.6, bh);
-    ctx.fillStyle = '#e8eaf6'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(hrs.toFixed(1), x + bw * 0.3, h - pad - bh - 4);
-    ctx.fillStyle = '#9aa0c3'; ctx.fillText(r.date.slice(5), x + bw * 0.3, h - pad + 14);
-  });
-}
-
-const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// 18:00 ~ 다음날 14:00 축에 수면 구간 막대
-function drawTimeline(data) {
-  const c = $('timeline'), dpr = window.devicePixelRatio || 1;
-  const w = c.clientWidth, h = c.clientHeight;
-  c.width = w * dpr; c.height = h * dpr;
-  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, w, h);
-  if (!data.length) { ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'center'; ctx.fillText('데이터가 없습니다', w / 2, h / 2); return; }
-  const left = 44, right = 10, top = 20, bottom = 10, start = 18 * 60, span = 20 * 60;
-  const X = m => left + ((m - start) / span) * (w - left - right);
-  ctx.font = '10px sans-serif'; ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'center'; ctx.strokeStyle = '#2a3060';
-  for (let t = start; t <= start + span; t += 240) { const x = X(t); ctx.fillText(fmtMin(t), x, 12); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, h - bottom); ctx.stroke(); }
-  const gb = (m => m < 1080 ? m + 1440 : m)(toMin(goal.bed));
-  ctx.strokeStyle = '#ffd166'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(X(gb), top); ctx.lineTo(X(gb), h - bottom); ctx.stroke(); ctx.setLineDash([]);
-  const rh = (h - top - bottom) / data.length;
-  data.forEach((r, i) => {
-    let b = toMin(r.bed); if (b < 1080) b += 1440;
-    const e = b + duration(r.bed, r.wake), y = top + i * rh;
-    ctx.fillStyle = '#7c8cff'; ctx.globalAlpha = 0.4 + r.quality * 0.12;
-    ctx.fillRect(X(Math.max(b, start)), y + rh * 0.2, X(Math.min(e, start + span)) - X(Math.max(b, start)), rh * 0.6);
-    ctx.globalAlpha = 1; ctx.fillStyle = '#9aa0c3'; ctx.textAlign = 'right';
-    ctx.fillText(r.date.slice(5), left - 6, y + rh / 2 + 3);
-  });
-}
-
-function renderList() {
-  if (!records.length) { $('list').innerHTML = '<div class="empty">아직 기록이 없습니다.</div>'; return; }
-  $('list').innerHTML = records.map((r, i) => `
-    <div class="entry">
-      <div>
-        <div class="d">${r.date} · ${'★'.repeat(r.quality)}</div>
-        <div class="s">${r.bed} → ${r.wake} (${fmtDur(duration(r.bed, r.wake))})${r.memo ? ' · ' + esc(r.memo) : ''}</div>
-      </div>
-      <div class="acts"><button data-e="${i}" title="수정">✏️</button><button class="del" data-i="${i}" title="삭제">✕</button></div>
-    </div>`).join('');
-  $('list').querySelectorAll('button.del').forEach(b => b.onclick = () => {
-    if (confirm('이 기록을 삭제할까요?')) { records.splice(+b.dataset.i, 1); save(); render(); toast('삭제되었습니다'); }
-  });
-  $('list').querySelectorAll('button[data-e]').forEach(b => b.onclick = () => startEdit(records[+b.dataset.e]));
-}
-
-function render() { renderStats(); renderList(); }
-
-function showTab(tab) {
-  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
-  document.querySelectorAll('main section').forEach(s => s.classList.toggle('hidden', s.id !== tab));
-  render();
-}
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
-document.querySelectorAll('#periodSeg button').forEach(b => b.onclick = () => {
-  period = +b.dataset.p;
-  document.querySelectorAll('#periodSeg button').forEach(x => x.classList.toggle('on', x === b));
-  renderStats();
-});
-
-$('saveGoal').onclick = () => {
-  const hrs = parseFloat($('goalHrs').value);
-  if (!(hrs >= 4 && hrs <= 12) || !$('goalBed').value) return toast('목표 값을 확인해주세요');
-  goal = { hrs, bed: $('goalBed').value };
-  localStorage.setItem(GKEY, JSON.stringify(goal));
-  toast('목표가 저장되었습니다'); render();
+$('planForm').onsubmit = e => {
+  e.preventDefault();
+  const plan = readForm();
+  if (!plan) { const bad = document.querySelector('input.bad'); if (bad) bad.focus(); return; }
+  localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+  showScreen('today');
 };
 
-$('exportBtn').onclick = () => {
-  const blob = new Blob([JSON.stringify({ records, goal }, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `sleep-backup-${today()}.json`; a.click();
-  URL.revokeObjectURL(a.href);
+$('editPlan').onclick = () => {
+  fillForm(loadPlan() || DEFAULTS);
+  $('cancelEdit').classList.remove('hidden');
+  showScreen('setup');
 };
-$('importBtn').onclick = () => $('importFile').click();
-$('importFile').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const rd = new FileReader();
-  rd.onload = () => {
-    try {
-      const data = JSON.parse(rd.result);
-      const list = Array.isArray(data) ? data : data.records;
-      if (!Array.isArray(list)) throw 0;
-      const valid = list.filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && /^\d{2}:\d{2}$/.test(r.bed) && /^\d{2}:\d{2}$/.test(r.wake));
-      const map = Object.fromEntries(records.map(r => [r.date, r]));
-      valid.forEach(r => map[r.date] = { date: r.date, bed: r.bed, wake: r.wake, quality: Math.min(5, Math.max(1, +r.quality || 3)), memo: String(r.memo || '') });
-      records = Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
-      if (data.goal && data.goal.hrs) { goal = data.goal; localStorage.setItem(GKEY, JSON.stringify(goal)); }
-      save(); render(); toast(`${valid.length}개 기록을 가져왔습니다`);
-    } catch { toast('올바른 백업 파일이 아닙니다'); }
-    e.target.value = '';
-  };
-  rd.readAsText(f);
-};
+$('cancelEdit').onclick = () => showScreen('today');
 
-renderStars();
-renderPending();
-render();
+// 시작: 플랜이 없으면 설정 화면부터
+const saved = loadPlan();
+if (saved) showScreen('today');
+else { fillForm(DEFAULTS); showScreen('setup'); }
 </script>
 </body>
 </html>
