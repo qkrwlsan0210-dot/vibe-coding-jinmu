@@ -15,8 +15,12 @@
   h1 { font-size: 1.3rem; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: .9rem; margin: 0 0 20px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+  .group { margin-bottom: 20px; }
+  .group h2 { font-size: 1rem; margin: 0 0 10px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .field { margin-bottom: 18px; }
-  label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 6px; }
+  .pair .field { margin-bottom: 0; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 6px; color: var(--muted); }
   .hint { color: var(--muted); font-size: .8rem; margin-top: 4px; }
   input { font-size: 1.05rem; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); width: 100%; }
   input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
@@ -27,69 +31,48 @@
   .btn { display: block; width: 100%; margin-top: 4px; padding: 14px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font-size: 1.05rem; font-weight: 600; cursor: pointer; }
   .link { background: none; border: none; color: var(--accent); font-size: .95rem; cursor: pointer; padding: 8px 0; }
   .hidden { display: none !important; }
-  .times { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  .time { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px; text-align: center; }
-  .time .l { color: var(--muted); font-size: .9rem; font-weight: 600; }
-  .time .v { font-size: 2.2rem; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
-  .time.wake .v { color: var(--accent); }
-  .progress { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: center; font-size: 1rem; }
-  .progress b { font-size: 1.2rem; }
-  .check { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-top: 12px; }
-  .check label { margin-bottom: 8px; }
-  .check .row { display: flex; gap: 8px; }
-  .check .row input { flex: 1; }
-  .check .row .btn { width: auto; margin: 0; padding: 10px 16px; white-space: nowrap; }
-  .sched { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-top: 12px; }
-  .sched h2 { font-size: 1rem; margin: 0 0 8px; }
+  .sched { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 6px 16px; }
   .sched ol { list-style: none; margin: 0; padding: 0; }
-  .sched li { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; padding: 9px 0; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .sched li { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; padding: 11px 0; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
   .sched li:first-child { border-top: none; }
   .sched .d { font-weight: 600; }
   .sched .t { color: var(--muted); font-size: .85rem; }
   .sched .t b { color: var(--text); font-size: 1rem; font-weight: 600; margin-left: 4px; }
+  .done { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
 </style>
 </head>
 <body>
 <main>
 
-  <!-- 화면 1: 오늘 (기능 2에서 구현) -->
+  <!-- 화면 1: 일정 -->
   <section id="today" class="hidden">
-    <h1>오늘</h1>
-    <p class="sub">이 시각에 맞춰 자고 일어나세요.</p>
-    <div class="times">
-      <div class="time"><div class="l">다음 취침</div><div class="v" id="nextBed">--:--</div></div>
-      <div class="time wake"><div class="l">다음 기상</div><div class="v" id="nextWake">--:--</div></div>
-    </div>
-    <div class="progress" id="progress"></div>
-    <form class="check" id="checkForm">
-      <label for="actualWake">실제 기상 시각</label>
-      <div class="row">
-        <input type="time" id="actualWake">
-        <button type="submit" class="btn">일어났어요</button>
-      </div>
-      <div class="err" id="actualErr"></div>
-    </form>
-    <div class="sched" id="sched">
-      <h2>목표일까지 일정</h2>
-      <ol id="schedList"></ol>
-    </div>
+    <h1 id="schedTitle">일정</h1>
+    <p class="sub" id="schedSub"></p>
+    <div class="sched" id="sched"><ol id="schedList"></ol></div>
+    <div class="done hidden" id="sameMsg">현재 패턴이 이미 목표 패턴과 같습니다.</div>
     <button class="link" id="editPlan">플랜 수정</button>
   </section>
 
   <!-- 화면 2: 플랜 설정 -->
   <section id="setup" class="hidden">
     <h1>회복 플랜 설정</h1>
-    <p class="sub">지금 일어나는 시각에서 목표 시각까지 하루씩 조금씩 옮겨 갑니다.</p>
+    <p class="sub">현재 패턴에서 목표 패턴까지 하루씩 조금씩 옮기는 일정을 만듭니다.</p>
     <form class="card" id="planForm" novalidate>
-      <div class="field">
-        <label for="curWake">현재 평소 기상 시각</label>
-        <input type="time" id="curWake">
-        <div class="err" id="curWakeErr"></div>
+      <div class="group">
+        <h2>현재 패턴</h2>
+        <div class="pair">
+          <div class="field"><label for="curBed">취침</label><input type="time" id="curBed"></div>
+          <div class="field"><label for="curWake">기상</label><input type="time" id="curWake"></div>
+        </div>
+        <div class="err" id="curErr"></div>
       </div>
-      <div class="field">
-        <label for="goalWake">목표 기상 시각</label>
-        <input type="time" id="goalWake">
-        <div class="err" id="goalWakeErr"></div>
+      <div class="group">
+        <h2>목표 패턴</h2>
+        <div class="pair">
+          <div class="field"><label for="goalBed">취침</label><input type="time" id="goalBed"></div>
+          <div class="field"><label for="goalWake">기상</label><input type="time" id="goalWake"></div>
+        </div>
+        <div class="err" id="goalErr"></div>
       </div>
       <div class="field">
         <label for="step">하루 이동 폭</label>
@@ -98,133 +81,84 @@
         <div class="err" id="stepErr"></div>
       </div>
       <div class="field">
-        <label for="sleepH">수면 시간</label>
-        <div class="inline">
-          <input type="number" id="sleepH" inputmode="numeric" min="3" max="14" step="1"><span>시간</span>
-          <input type="number" id="sleepM" inputmode="numeric" min="0" max="59" step="1"><span>분</span>
-        </div>
-        <div class="hint">3~14시간</div>
-        <div class="err" id="sleepErr"></div>
-      </div>
-      <div class="field">
-        <label for="startDate">시작 날짜</label>
+        <label for="startDate">적용 날짜</label>
         <input type="date" id="startDate">
-        <div class="hint">일정 첫날의 취침 날짜</div>
         <div class="err" id="startDateErr"></div>
       </div>
-      <button type="submit" class="btn">플랜 저장</button>
+      <button type="submit" class="btn">일정 만들기</button>
     </form>
     <button class="link hidden" id="cancelEdit">취소</button>
   </section>
 
 </main>
 <script>
-const PLAN_KEY = 'sleepPlan';
-const DEFAULTS = { curWake: '13:00', goalWake: '08:00', step: 30, sleepMin: 480 };
+const PLAN_KEY = 'sleepPlanV2';
 const $ = id => document.getElementById(id);
 
-// ---- 시각 계산 (분 단위, 0~1439) ----
+// ---- 시각 (분 단위, 0~1439) ----
+const pad2 = n => String(n).padStart(2, '0');
 const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const wrap = m => ((m % 1440) + 1440) % 1440;
-const fmt = m => { m = wrap(m); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const fmt = m => { m = wrap(m); return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); };
 
-// 기준 기상 시각(from)에서 목표(goal)까지 짧은 쪽 방향의 차이(분). 정확히 12시간이면 앞당기는 쪽(음수) [가정]
+// from에서 goal까지 짧은 쪽 방향의 차이(분). 정확히 12시간이면 앞당기는 쪽(음수) [가정]
 function shortestDiff(from, goal) {
   let d = wrap(goal - from);
   if (d > 720) d -= 1440;
   if (d === 720) d = -720;
   return d;
 }
-
-// 기준 기상 시각에서 1단계 이동한 다음 일정
-function nextSchedule(baseWake, plan) {
-  const goal = toMin(plan.goalWake);
-  const d = shortestDiff(baseWake, goal);
-  if (d === 0) return { reached: true, wake: goal, bed: wrap(goal - plan.sleepMin), daysLeft: 0 };
-  const move = Math.sign(d) * Math.min(plan.step, Math.abs(d));
-  const wake = wrap(baseWake + move);
-  return { reached: false, wake, bed: wrap(wake - plan.sleepMin), daysLeft: Math.ceil(Math.abs(d) / plan.step) };
-}
+const stepToward = (from, goal, step) => { const d = shortestDiff(from, goal); return Math.sign(d) * Math.min(step, Math.abs(d)); };
 
 // ---- 날짜 (로컬 기준, 일 번호로 계산) ----
-const pad2 = n => String(n).padStart(2, '0');
 const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
 const dayNum = iso => { const [y, m, d] = iso.split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 864e5); };
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const fmtDay = n => { const d = new Date(n * 864e5); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}(${DOW[d.getUTCDay()]})`; };
 
-function loadLast() {
-  const raw = localStorage.getItem(LAST_KEY);
-  if (!raw) return null;
-  try { const o = JSON.parse(raw); if (o && o.time) return o; } catch {}
-  return /^\d{2}:\d{2}$/.test(raw) ? { time: raw, date: todayISO() } : null;  // 이전 형식(시각만) 호환
-}
+const DEFAULTS = { curBed: '06:00', curWake: '15:00', goalBed: '23:00', goalWake: '09:00', step: 30 };
 
-// 목표 도달까지의 일정. 각 줄 = 취침 날짜, 취침, 기상. 시각은 절대 분(일 번호*1440 + 분)으로 계산해 자정 넘김 처리
-function buildSchedule(plan, last) {
-  const goal = toMin(plan.goalWake);
-  let wake = toMin(last ? last.time : plan.curWake);
-  let wakeAbs;  // 직전 기상의 절대 분
-  if (last) wakeAbs = dayNum(last.date) * 1440 + wake;
+// 현재 패턴 → 목표 패턴 일정. 취침·기상을 각각 하루에 이동 폭만큼 목표 쪽으로 옮김.
+// 첫 줄 = 적용 날짜(1단계 이동한 값), 줄 날짜 = 취침 날짜. 취침은 절대 분으로 누적해 자정 넘김 처리.
+function buildSchedule(plan) {
+  const gBed = toMin(plan.goalBed), gWake = toMin(plan.goalWake);
+  let bed = toMin(plan.curBed), wake = toMin(plan.curWake);
+  let bedAbs = null;
   const rows = [];
-  let firstBedAbs = null;
   for (let i = 0; i < 2000; i++) {
-    const d = shortestDiff(wake, goal);
-    if (d === 0) break;
-    const move = Math.sign(d) * Math.min(plan.step, Math.abs(d));
-    const nextWake = wrap(wake + move);
-    let bedAbs, nextWakeAbs;
-    if (i === 0 && !last) {
-      // 기록이 없으면: 첫 줄 취침 날짜 = 시작 날짜
-      bedAbs = dayNum(plan.startDate) * 1440 + wrap(nextWake - plan.sleepMin);
-      nextWakeAbs = bedAbs + plan.sleepMin;
-    } else {
-      nextWakeAbs = wakeAbs + 1440 + move;
-      bedAbs = nextWakeAbs - plan.sleepMin;
-    }
-    rows.push({ day: Math.floor(bedAbs / 1440), bed: wrap(bedAbs), wake: nextWake });
-    wake = nextWake; wakeAbs = nextWakeAbs;
+    const mBed = stepToward(bed, gBed, plan.step), mWake = stepToward(wake, gWake, plan.step);
+    if (mBed === 0 && mWake === 0) break;
+    bed = wrap(bed + mBed); wake = wrap(wake + mWake);
+    bedAbs = bedAbs === null ? dayNum(plan.startDate) * 1440 + bed : bedAbs + 1440 + mBed;
+    rows.push({ day: Math.floor(bedAbs / 1440), bed, wake });
   }
   return rows;
 }
-
-function renderToday() {
-  const plan = loadPlan();
-  if (!plan) return;
-  if (!plan.startDate) plan.startDate = todayISO();  // 시작 날짜가 없던 이전 플랜
-  const last = loadLast();
-  // 규칙: 다음 목표 = 마지막 실제 기상 시각 + 1단계 (기록이 없으면 플랜의 현재 기상 시각)
-  const s = nextSchedule(toMin(last ? last.time : plan.curWake), plan);
-  const rows = buildSchedule(plan, last);
-  $('sched').classList.toggle('hidden', rows.length === 0);
-  $('schedList').innerHTML = rows.map(r =>
-    `<li><span class="d">${fmtDay(r.day)}</span><span class="t">취침<b>${fmt(r.bed)}</b></span><span class="t">기상<b>${fmt(r.wake)}</b></span></li>`).join('');
-  $('nextBed').textContent = fmt(s.bed);
-  $('nextWake').textContent = fmt(s.wake);
-  $('progress').innerHTML = s.reached
-    ? '🎉 <b>목표 도달</b> · 유지 단계<br><small>매일 이 시각에 맞춰 자고 일어나세요</small>'
-    : s.daysLeft === 1 ? '다음 기상이면 <b>목표 도달</b>' : `목표까지 <b>${s.daysLeft}일</b>`;
-}
-
-const LAST_KEY = 'lastActualWake';
-const nowHHMM = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 
 function loadPlan() {
   try { return JSON.parse(localStorage.getItem(PLAN_KEY)); } catch { return null; }
 }
 
+function renderSchedule() {
+  const plan = loadPlan();
+  if (!plan) return;
+  const rows = buildSchedule(plan);
+  $('sched').classList.toggle('hidden', rows.length === 0);
+  $('sameMsg').classList.toggle('hidden', rows.length !== 0);
+  $('schedTitle').textContent = rows.length ? `${fmtDay(dayNum(plan.startDate))}부터 ${rows.length}일 일정` : '일정';
+  $('schedSub').textContent = `${plan.curBed} 취침 · ${plan.curWake} 기상 → ${plan.goalBed} 취침 · ${plan.goalWake} 기상`;
+  $('schedList').innerHTML = rows.map(r =>
+    `<li><span class="d">${fmtDay(r.day)}</span><span class="t">취침<b>${fmt(r.bed)}</b></span><span class="t">기상<b>${fmt(r.wake)}</b></span></li>`).join('');
+}
+
 function showScreen(id) {
   ['today', 'setup'].forEach(s => $(s).classList.toggle('hidden', s !== id));
-  if (id === 'today') { renderToday(); $('actualWake').value = nowHHMM(); $('actualErr').textContent = ''; }
+  if (id === 'today') renderSchedule();
   window.scrollTo(0, 0);
 }
 
 function fillForm(p) {
-  $('curWake').value = p.curWake;
-  $('goalWake').value = p.goalWake;
-  $('step').value = p.step;
-  $('sleepH').value = Math.floor(p.sleepMin / 60);
-  $('sleepM').value = p.sleepMin % 60;
+  ['curBed', 'curWake', 'goalBed', 'goalWake', 'step'].forEach(k => $(k).value = p[k]);
   $('startDate').value = p.startDate || todayISO();
   clearErrors();
 }
@@ -243,29 +177,18 @@ function setErr(inputIds, errId, msg) {
 function readForm() {
   clearErrors();
   let ok = true;
-  const curWake = $('curWake').value, goalWake = $('goalWake').value;
-  if (!curWake) { setErr(['curWake'], 'curWakeErr', '현재 기상 시각을 입력해주세요.'); ok = false; }
-  if (!goalWake) { setErr(['goalWake'], 'goalWakeErr', '목표 기상 시각을 입력해주세요.'); ok = false; }
-
-  const stepRaw = $('step').value.trim();
-  const step = Number(stepRaw);
+  const v = id => $(id).value;
+  for (const [b, w, err, name] of [['curBed', 'curWake', 'curErr', '현재'], ['goalBed', 'goalWake', 'goalErr', '목표']]) {
+    if (!v(b) || !v(w)) { setErr([b, w].filter(i => !v(i)), err, `${name} 패턴의 취침·기상 시각을 모두 입력해주세요.`); ok = false; }
+    else if (v(b) === v(w)) { setErr([b, w], err, `${name} 패턴의 취침과 기상 시각이 같습니다.`); ok = false; }
+  }
+  const stepRaw = v('step').trim(), step = Number(stepRaw);
   if (stepRaw === '' || !Number.isInteger(step) || step < 1 || step > 180) {
     setErr(['step'], 'stepErr', '하루 이동 폭은 1~180 사이의 정수(분)로 입력해주세요.'); ok = false;
   }
-
-  const hRaw = $('sleepH').value.trim(), mRaw = $('sleepM').value.trim();
-  const h = Number(hRaw), m = mRaw === '' ? 0 : Number(mRaw);
-  if (hRaw === '' || !Number.isInteger(h) || !Number.isInteger(m) || m < 0 || m > 59) {
-    setErr(['sleepH', 'sleepM'], 'sleepErr', '수면 시간은 시간(정수)과 분(0~59)으로 입력해주세요.'); ok = false;
-  } else if (h * 60 + m < 180 || h * 60 + m > 840) {
-    setErr(['sleepH', 'sleepM'], 'sleepErr', '수면 시간은 3~14시간 사이로 입력해주세요.'); ok = false;
-  }
-
-  const startDate = $('startDate').value;
-  if (!startDate) { setErr(['startDate'], 'startDateErr', '시작 날짜를 입력해주세요.'); ok = false; }
-
+  if (!v('startDate')) { setErr(['startDate'], 'startDateErr', '적용 날짜를 입력해주세요.'); ok = false; }
   if (!ok) return null;
-  return { curWake, goalWake, step, sleepMin: h * 60 + m, startDate, createdAt: new Date().toISOString() };
+  return { curBed: v('curBed'), curWake: v('curWake'), goalBed: v('goalBed'), goalWake: v('goalWake'), step, startDate: v('startDate') };
 }
 
 $('planForm').onsubmit = e => {
@@ -273,15 +196,6 @@ $('planForm').onsubmit = e => {
   const plan = readForm();
   if (!plan) { const bad = document.querySelector('input.bad'); if (bad) bad.focus(); return; }
   localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
-  localStorage.removeItem(LAST_KEY);  // 새 플랜은 입력한 '현재 기상 시각'부터 시작 [가정]
-  showScreen('today');
-};
-
-$('checkForm').onsubmit = e => {
-  e.preventDefault();
-  const t = $('actualWake').value;
-  if (!t) { $('actualErr').textContent = '기상 시각을 입력해주세요.'; return; }
-  localStorage.setItem(LAST_KEY, JSON.stringify({ time: t, date: todayISO() }));
   showScreen('today');
 };
 
@@ -293,8 +207,7 @@ $('editPlan').onclick = () => {
 $('cancelEdit').onclick = () => showScreen('today');
 
 // 시작: 플랜이 없으면 설정 화면부터
-const saved = loadPlan();
-if (saved) showScreen('today');
+if (loadPlan()) showScreen('today');
 else { fillForm(DEFAULTS); showScreen('setup'); }
 </script>
 </body>
